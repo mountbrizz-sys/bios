@@ -2,7 +2,7 @@
 
 Personal productivity PWA: habits, calendar, deadlines, tasks, weekly review,
 cloud sync. Single-file vanilla JS/HTML/CSS. Sole developer/user: Brizz.
-Live at biosbybrizz.netlify.app.
+Live at bios-lake.vercel.app.
 
 ## Files
 - `index.html` — the entire app (HTML/CSS/JS in one file)
@@ -47,8 +47,8 @@ npm test          # before every deploy
 1. Edit `index.html` / `sw.js`.
 2. Bump the `CACHE` version string in `sw.js`.
 3. `npm test` — all suites must pass.
-4. Commit and push (if Netlify is linked to this repo, that's the deploy —
-   otherwise drag the folder into Netlify manually).
+4. Commit and push — Vercel's GitHub integration (Hobby/free tier)
+   auto-deploys every push to main.
 
 ## Known open items (carried over from prior sessions)
 - Deleting a single occurrence of a recurring appointment gets silently
