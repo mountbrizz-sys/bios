@@ -1,0 +1,12 @@
+{
+  "app": "bios",
+  "version": 1,
+  "exported": "2026-09-11T06:40:58.970634",
+  "data": {
+    "bios_profile": "{\"name\": \"Devon\", \"wake\": \"06:30\", \"sleep\": \"22:30\", \"focus\": [\"fitness\"], \"goal\": \"Stay consistent with training\", \"time\": 30, \"sched\": \"M-F 9-5\", \"wday\": \"Sat/Sun\", \"created\": 1788244858970}",
+    "bios_habits": "[{\"id\": \"dh1\", \"name\": \"Evening run\", \"cat\": \"fitness\", \"dur\": 30, \"days\": [\"Tue\", \"Thu\", \"Sat\"]}]",
+    "bios_appts": "[{\"id\": \"da1\", \"title\": \"Team standup\", \"date\": \"2026-09-11\", \"time\": \"11:00\", \"end\": \"12:00\", \"cat\": \"work\", \"note\": \"\"}, {\"id\": \"da2\", \"title\": \"Basketball league\", \"date\": \"2026-09-11\", \"time\": \"18:00\", \"end\": \"19:30\", \"cat\": \"social\", \"note\": \"\"}, {\"id\": \"da3\", \"title\": \"Grocery run\", \"date\": \"2026-09-12\", \"time\": \"10:00\", \"end\": \"11:00\", \"cat\": \"personal\", \"note\": \"\"}, {\"id\": \"da4\", \"title\": \"1:1 with manager\", \"date\": \"2026-09-14\", \"time\": \"14:00\", \"end\": \"14:30\", \"cat\": \"work\", \"note\": \"\"}]",
+    "bios_deadlines": "[{\"id\": \"dd1\", \"title\": \"Tax forms\", \"due\": \"2026-09-12\", \"cat\": \"work\", \"done\": false}]",
+    "bios_checks": "{\"2026-09-10\": {\"dh1\": 1788957658970}}"
+  }
+}
