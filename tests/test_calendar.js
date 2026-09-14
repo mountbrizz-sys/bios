@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const html = fs.readFileSync('../index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '../index.html'), 'utf8');
 
 // Pin "today" so date-dependent rendering is deterministic.
 const FAKE_NOW = new Date(2026, 8, 9, 14, 30); // Wed Sep 9 2026, 2:30pm

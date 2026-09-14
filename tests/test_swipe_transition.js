@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const html = fs.readFileSync('../index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '../index.html'), 'utf8');
 
 const FAKE_NOW = new Date(2026, 8, 9, 14, 30);
 const RealDate = Date;

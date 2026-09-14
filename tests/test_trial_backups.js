@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const html = fs.readFileSync('../index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '../index.html'), 'utf8');
 
 const FAKE_NOW = new Date(2026, 8, 11, 12, 0); // Fri Sep 11 2026, noon — matches the backups' anchor date
 const RealDate = Date;
@@ -18,7 +18,7 @@ function check(name, cond) {
 
 function loadTrialUser(label, backupPath, assertions) {
   console.log('\n== ' + label + ' ==');
-  const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+  const backup = JSON.parse(fs.readFileSync(require('path').join(__dirname, backupPath), 'utf8'));
   const consoleErrors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', (e) => consoleErrors.push(e));

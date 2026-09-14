@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const html = fs.readFileSync('../index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, '../index.html'), 'utf8');
 
 // "Today" = Thursday Sep 10, 2026 — mid-week, so the week Mon 7 -> Sun 13
 // has both past days (Mon-Wed) and future days (Fri-Sun) to inspect.
