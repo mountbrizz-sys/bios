@@ -3063,15 +3063,15 @@ const EVENT_CAT_COLOR = {
   fitness:  '#22dd77',
   other:    '#8855ff',
 };
-const CAL_DOWFULL = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const CAL_DOW1 = ['M','T','W','T','F','S','S'];
+const CAL_DOWFULL = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const CAL_DOW1 = ['S','M','T','W','T','F','S'];
 const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// ── CALENDAR: date helpers (Monday-start week, to match the week/day grid) ──
+// ── CALENDAR: date helpers (Sunday-start week, to match the week/day grid) ──
 function calParse(iso) { const p = iso.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
 function calShift(iso, n) { const d = calParse(iso); d.setDate(d.getDate()+n); return dateKey(d); }
-function calDow(iso) { return (calParse(iso).getDay() + 6) % 7; } // Mon=0..Sun=6
-function calMonday(iso) { return calShift(iso, -calDow(iso)); }
+function calDow(iso) { return calParse(iso).getDay(); } // Sun=0..Sat=6
+function calWeekStart(iso) { return calShift(iso, -calDow(iso)); }
 function calAddMonth(iso, n) {
   const d = calParse(iso), day = d.getDate();
   const t = new Date(d.getFullYear(), d.getMonth()+n, 1);
@@ -3082,7 +3082,7 @@ function calAddMonth(iso, n) {
 function calWeekNum(iso) {
   const d = calParse(iso);
   const jan1 = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d - jan1) / 86400000 + ((jan1.getDay()+6)%7) + 1) / 7);
+  return Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
 }
 
 // ── CALENDAR: time helpers ──
@@ -3457,12 +3457,12 @@ function calRenderHeader() {
     title = CAL_DOWFULL[calDow(calSel)] + ' ' + selD.getDate();
     kicker = (calSel === today ? 'Today · ' : '') + CAL_MONTHS[selD.getMonth()] + ' ' + selD.getFullYear();
   } else if (calView === 'week') {
-    const mon = calMonday(calSel), sun = calShift(mon, 6);
-    const a = calParse(mon), b = calParse(sun);
+    const sunStart = calWeekStart(calSel), satEnd = calShift(sunStart, 6);
+    const a = calParse(sunStart), b = calParse(satEnd);
     title = a.getMonth() === b.getMonth()
       ? CAL_MONTHS[a.getMonth()].slice(0,3) + ' ' + a.getDate() + '–' + b.getDate()
       : CAL_MONTHS[a.getMonth()].slice(0,3) + ' ' + a.getDate() + ' – ' + CAL_MONTHS[b.getMonth()].slice(0,3) + ' ' + b.getDate();
-    kicker = 'Week ' + calWeekNum(mon) + ' · ' + a.getFullYear();
+    kicker = 'Week ' + calWeekNum(sunStart) + ' · ' + a.getFullYear();
   } else {
     title = CAL_MONTHS[selD.getMonth()] + ' ' + selD.getFullYear();
     kicker = 'Month';
@@ -3500,7 +3500,7 @@ function calRenderMonth() {
   const today = dateKey(new Date());
   const grid = document.getElementById('calGrid');
 
-  let html = ['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => `<div class="cal-dh">${d}</div>`).join('');
+  let html = ['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => `<div class="cal-dh">${d}</div>`).join('');
 
   function cellHTML(date, inMonth) {
     const key = dateKey(date);
@@ -3546,15 +3546,15 @@ function calRenderMonth() {
     </div>`;
   }
 
-  const firstMon = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-start offset
+  const firstSun = new Date(y, m, 1).getDay(); // Sunday-start offset
   const daysInMonth = new Date(y, m+1, 0).getDate();
   const prevMonthDays = new Date(y, m, 0).getDate();
   const prevY = m === 0 ? y-1 : y, prevM = m === 0 ? 11 : m-1;
   const nextY = m === 11 ? y+1 : y, nextM = m === 11 ? 0 : m+1;
 
-  for (let i = firstMon - 1; i >= 0; i--) html += cellHTML(new Date(prevY, prevM, prevMonthDays - i), false);
+  for (let i = firstSun - 1; i >= 0; i--) html += cellHTML(new Date(prevY, prevM, prevMonthDays - i), false);
   for (let day = 1; day <= daysInMonth; day++) html += cellHTML(new Date(y, m, day), true);
-  const trailing = (7 - ((firstMon + daysInMonth) % 7)) % 7;
+  const trailing = (7 - ((firstSun + daysInMonth) % 7)) % 7;
   for (let day = 1; day <= trailing; day++) html += cellHTML(new Date(nextY, nextM, day), false);
 
   grid.innerHTML = html;
@@ -3575,8 +3575,8 @@ function calBlockBorderCSS(e, col) {
 
 // ── CALENDAR: week view (hour grid, 7 swimlane columns) ──
 function calRenderWeek() {
-  const mon = calMonday(calSel);
-  const week = []; for (let i=0;i<7;i++) week.push(calShift(mon, i));
+  const sunStart = calWeekStart(calSel);
+  const week = []; for (let i=0;i<7;i++) week.push(calShift(sunStart, i));
   const today = dateKey(new Date());
 
   document.getElementById('calWeekHead').innerHTML = '<div class="cal-week-head-spacer"></div>' + week.map(d => {

@@ -75,7 +75,7 @@ window.Date = FixedDate;
     check('month view hidden', doc.getElementById('calMonthView').style.display === 'none');
     const weekCols = doc.getElementById('calWeekCols').children;
     check('week has 7 day columns', weekCols.length === 7);
-    const tueCol = weekCols[2]; // Wed 9/9 is index 2 in a Mon-start week containing 9/9
+    const tueCol = weekCols[3]; // Wed 9/9 is index 3 in a Sun-start week containing 9/9
     check('today column marked is-sel or contains blocks', tueCol.querySelectorAll('.cal-block').length >= 3);
     check('summary shows conflict flag for 9/9', doc.getElementById('calConflictFlag').style.display !== 'none');
     check('conflict label mentions clash', /clash/.test(doc.getElementById('calConflictLabel').textContent));
