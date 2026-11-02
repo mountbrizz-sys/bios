@@ -1,5 +1,5 @@
 // Bios service worker — cache-first with background update
-const CACHE = 'bios-v81';
+const CACHE = 'bios-v82';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

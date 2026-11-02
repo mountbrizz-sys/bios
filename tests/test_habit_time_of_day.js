@@ -88,21 +88,21 @@ try {
   stored = JSON.parse(window.localStorage.getItem('bios_habits'));
   check('Specific time without a time is refused', !stored.some(h => h.name === 'Walk'));
 
-  doc.getElementById('sh-time').value = '19:30';
+  doc.getElementById('sh-t-0').value = '19:30';
   window.saveHabit();
   stored = JSON.parse(window.localStorage.getItem('bios_habits'));
   const walk = stored.find(h => h.name === 'Walk');
-  check('Specific time habit saves pref "time" and its time', walk && walk.pref === 'time' && walk.time === '19:30');
+  check('Specific time habit saves pref "time" and its time', walk && walk.pref === 'time' && walk.times.join() === '19:30');
 
   window.openSheet(walk.id);
   check('editing shows Specific time selected with its time', doc.querySelector('#sh-pref .sel').dataset.val === 'time'
-    && doc.getElementById('sh-time-display').textContent.trim() === window.fmtTime('19:30'));
+    && doc.getElementById('sh-t-0-display').textContent.trim() === window.fmtTime('19:30'));
   doc.querySelector('#sh-pref [data-val="afternoon"]').click();
   check('switching away hides the time field', doc.getElementById('sh-time-field').style.display === 'none');
   window.saveHabit();
   stored = JSON.parse(window.localStorage.getItem('bios_habits'));
   const walk2 = stored.find(h => h.id === walk.id);
-  check('switching to Afternoon drops the stale time', walk2.pref === 'afternoon' && !('time' in walk2));
+  check('switching to Afternoon drops the stale times', walk2.pref === 'afternoon' && !('time' in walk2) && !('times' in walk2));
 
   window.openSheet('hl');
   check('legacy "any" habit opens with Morning selected', doc.querySelector('#sh-pref .sel').dataset.val === 'morning');

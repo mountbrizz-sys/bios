@@ -1158,10 +1158,8 @@
         <div class="sh-chip" onclick="pickShPref(this)" data-val="time">Specific time</div>
       </div>
       <div id="sh-time-field" style="display:none;margin-top:8px;">
-        <div onclick="openRecTimePicker('sh-time', this)" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;text-align:center;">
-          <span id="sh-time-display" style="font-family:var(--font);font-size:18px;font-weight:700;color:var(--text);">Pick a time</span>
-          <input type="hidden" id="sh-time" value="">
-        </div>
+        <div id="sh-times"></div>
+        <label id="sh-perday-row" style="display:flex;align-items:center;gap:7px;margin:6px 0 8px;font-size:11px;color:var(--text3);cursor:pointer;"><input type="checkbox" id="sh-perday" onchange="renderShTimes(true)" style="width:15px;height:15px;accent-color:var(--lime);">Different times per day</label>
       </div>
     </div>
     <div class="sh-field">
@@ -1465,7 +1463,7 @@ function cancelEditProfile() {
 }
 // ── APP INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Bios build] habit-time-of-day-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
+  console.log('[Bios build] habit-multi-times-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
   const client = initSupabase();
   if (!client) {
     // Login service unreachable (offline, SDK failed to load, or config.js
@@ -1596,11 +1594,39 @@ function renderToday() {
   if (noHabitsBanner) noHabitsBanner.style.display = todayH.length ? 'none' : 'block';
 }
 
+// A habit with several times a day is checked per time (key "id#slot").
+// The plain id key — what streaks, the review and the grid read — is set
+// as soon as at least one time is checked, and cleared when none are.
+function syncHabitSlots(id, key, on) {
+  const day = checks[key];
+  if (!on) { Object.keys(day).forEach(k => { if (k.indexOf(id + '#') === 0) delete day[k]; }); return; }
+  const h = (habits || []).find(x => x.id === id);
+  if (h && habitSlotCount(h, dayName(calParse(key))) > 1 && !Object.keys(day).some(k => k.indexOf(id + '#') === 0)) {
+    day[id + '#0'] = day[id];
+  }
+}
+function toggleHabitCheck(id, key, slot, skipConfetti) {
+  if (slot === undefined || slot === null || slot === '') { toggleCheckOn(id, key, skipConfetti); return; }
+  if (!checks[key]) checks[key] = {};
+  const sk = id + '#' + slot;
+  const wasOn = !!checks[key][sk];
+  if (wasOn) delete checks[key][sk];
+  else checks[key][sk] = Date.now();
+  const anySlot = Object.keys(checks[key]).some(k => k.indexOf(id + '#') === 0);
+  if (anySlot && !checks[key][id]) checks[key][id] = checks[key][sk] || Date.now();
+  if (!anySlot) delete checks[key][id];
+  save();
+  renderToday();
+  renderTimeline();
+  renderCal();
+  if (!wasOn && !skipConfetti) confetti();
+}
 function toggleCheckOn(id, key, skipConfetti) {
   if (!checks[key]) checks[key] = {};
   const wasOn = !!checks[key][id];
   if (wasOn) delete checks[key][id];
   else checks[key][id] = Date.now();
+  syncHabitSlots(id, key, !wasOn);
   save();
   renderToday();
   renderTimeline();
@@ -1613,6 +1639,7 @@ function toggleCheck(id) {
   const wasOn = !!checks[key][id];
   if (wasOn) delete checks[key][id];          // uncheck: clears the completion time too
   else checks[key][id] = Date.now();           // check: remember exactly when
+  syncHabitSlots(id, key, !wasOn);
   save();
   renderToday();
   renderTimeline();   // reposition today's schedule to reflect it
@@ -1642,11 +1669,20 @@ function habitPref(h) {
   const p = h && h.pref;
   return (p === 'afternoon' || p === 'evening' || p === 'time') ? p : 'morning';
 }
-function habitFixedMins(h) {
-  if (habitPref(h) !== 'time' || !h.time) return null;
-  const [hh, mm] = h.time.split(':').map(Number);
-  return hh * 60 + mm;
+// A "Specific time" habit's times on a weekday (sorted 'HH:MM' list), or
+// null for Morning/Afternoon/Night habits. Per-day times win over the
+// shared list; h.time is the older single-time field.
+function habitSlotsOn(h, dn) {
+  if (habitPref(h) !== 'time') return null;
+  const per = h.dayTimes && dn && h.dayTimes[dn];
+  const list = (per && per.length) ? per : ((h.times && h.times.length) ? h.times : (h.time ? [h.time] : []));
+  return list.filter(Boolean).slice().sort();
 }
+function habitSlotCount(h, dn) {
+  const s = habitSlotsOn(h, dn);
+  return (s && s.length) ? s.length : 1;
+}
+function slotToMins(t) { const [hh, mm] = t.split(':').map(Number); return hh * 60 + mm; }
 function habitPrefStart(h) {
   return HABIT_PREF_START[habitPref(h)] ?? HABIT_PREF_START.morning;
 }
@@ -1725,10 +1761,15 @@ function openSheet(editId) {
   const wantPref = h ? habitPref(h) : '';
   document.querySelectorAll('#sh-pref .sh-chip').forEach(c =>
     c.classList.toggle('sel', c.dataset.val === wantPref));
-  const wantTime = (h && wantPref === 'time' && h.time) || '';
-  document.getElementById('sh-time').value = wantTime;
-  document.getElementById('sh-time-display').textContent = wantTime ? fmtTime(wantTime) : 'Pick a time';
+  const isTime = !!h && wantPref === 'time';
+  shT = {
+    times: isTime ? ((h.times && h.times.length) ? h.times.slice() : (h.time ? [h.time] : [''])) : [''],
+    perday: isTime && !!h.dayTimes,
+    dayTimes: isTime && h.dayTimes ? JSON.parse(JSON.stringify(h.dayTimes)) : {}
+  };
+  document.getElementById('sh-perday').checked = shT.perday;
   document.getElementById('sh-time-field').style.display = wantPref === 'time' ? 'block' : 'none';
+  renderShTimes(false);
   const defDays = ['Mon','Tue','Wed','Thu','Fri'];
   document.querySelectorAll('#sh-days .sh-day').forEach(dEl =>
     dEl.classList.toggle('sel', h ? (h.days||[]).includes(dEl.dataset.d) : defDays.includes(dEl.dataset.d)));
@@ -1752,6 +1793,7 @@ function pickShMode(el) {
   const freq = el.dataset.val === 'freq';
   document.getElementById('sh-target-field').style.display = freq ? 'block' : 'none';
   document.getElementById('sh-days-field').style.display   = freq ? 'none'  : 'block';
+  renderShTimes(true);
 }
 function pickShTarget(el) {
   document.querySelectorAll('#sh-target .sh-chip').forEach(c => c.classList.remove('sel'));
@@ -1761,12 +1803,78 @@ function pickShPref(el) {
   document.querySelectorAll('#sh-pref .sh-chip').forEach(c => c.classList.remove('sel'));
   el.classList.add('sel');
   document.getElementById('sh-time-field').style.display = el.dataset.val === 'time' ? 'block' : 'none';
+  if (el.dataset.val === 'time') renderShTimes(true);
 }
 function pickShCat(el) {
   document.querySelectorAll('#sh-cats .sh-chip').forEach(c => c.classList.remove('sel'));
   el.classList.add('sel');
 }
-document.querySelectorAll('#sh-days .sh-day').forEach(d => d.onclick = () => d.classList.toggle('sel'));
+document.querySelectorAll('#sh-days .sh-day').forEach(d => d.onclick = () => {
+  d.classList.toggle('sel');
+  if (document.getElementById('sh-perday').checked) renderShTimes(true);
+});
+
+// ── habit times editor (Specific time): several times a day, optionally
+// different per weekday — same shape as the recurring-activity editor ──
+let shT = { times: [''], perday: false, dayTimes: {} };
+function shSelDays() { return [...document.querySelectorAll('#sh-days .sel')].map(d => d.dataset.d); }
+function shIsFreq() { return (document.querySelector('#sh-mode .sel')?.dataset.val || 'days') === 'freq'; }
+function harvestShTimes() {
+  const read = prefix => {
+    const out = [];
+    for (let i = 0; i < 12; i++) {
+      const el = document.getElementById(prefix + i);
+      if (!el) break;
+      out.push(el.value || '');
+    }
+    return out;
+  };
+  if (document.getElementById('sh-t-0')) shT.times = read('sh-t-');
+  DAYS.forEach(d => { if (document.getElementById('sh-t-' + d + '-0')) shT.dayTimes[d] = read('sh-t-' + d + '-'); });
+  shT.perday = !!document.getElementById('sh-perday').checked;
+}
+function renderShTimes(harvest) {
+  const wrap = document.getElementById('sh-times');
+  if (!wrap) return;
+  if (harvest) harvestShTimes();
+  const freq = shIsFreq();
+  document.getElementById('sh-perday-row').style.display = freq ? 'none' : 'flex';
+  const perday = shT.perday && !freq;
+  const field = (id, val) =>
+      '<div onclick="openRecTimePicker(\'' + id + '\', this)" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 8px;text-align:center;cursor:pointer;">'
+    +   '<span id="' + id + '-display" style="font-size:13px;font-weight:700;">' + (val ? fmtTime(val) : 'Pick a time') + '</span>'
+    +   '<input type="hidden" id="' + id + '" value="' + (val || '') + '">'
+    + '</div>';
+  const rows = (list, prefix, day, label) => list.map((t, i) =>
+      '<div style="display:grid;grid-template-columns:38px 1fr 22px;gap:6px;align-items:center;margin-bottom:6px;">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);">' + (i === 0 ? label : '') + '</div>'
+    +   field(prefix + i, t)
+    +   (list.length > 1 ? '<div onclick="removeShTime(\'' + day + '\',' + i + ')" style="text-align:center;color:var(--text4);cursor:pointer;font-size:13px;">&times;</div>' : '<div></div>')
+    + '</div>').join('')
+    + '<div style="display:grid;grid-template-columns:38px 1fr;gap:6px;margin:-2px 0 10px;"><div></div>'
+    + '<div onclick="addShTime(\'' + day + '\')" style="font-size:10.5px;font-weight:700;color:var(--lime);cursor:pointer;padding:2px 0;">+ another time' + (day ? ' on ' + day : '') + '</div></div>';
+  if (!perday) {
+    if (!shT.times.length) shT.times = [''];
+    wrap.innerHTML = rows(shT.times, 'sh-t-', '', '');
+    return;
+  }
+  const days = shSelDays();
+  if (!days.length) { wrap.innerHTML = '<div style="font-size:11px;color:var(--text4);padding:4px 0;">Pick days first.</div>'; return; }
+  wrap.innerHTML = days.map(d => {
+    if (!shT.dayTimes[d] || !shT.dayTimes[d].length) shT.dayTimes[d] = shT.times.filter(Boolean).length ? shT.times.filter(Boolean) : [''];
+    return rows(shT.dayTimes[d], 'sh-t-' + d + '-', d, d);
+  }).join('');
+}
+function addShTime(day) {
+  harvestShTimes();
+  (day ? (shT.dayTimes[day] = shT.dayTimes[day] || []) : shT.times).push('');
+  renderShTimes(false);
+}
+function removeShTime(day, i) {
+  harvestShTimes();
+  (day ? shT.dayTimes[day] : shT.times).splice(i, 1);
+  renderShTimes(false);
+}
 
 function saveHabit() {
   const name = document.getElementById('sh-name').value.trim();
@@ -1785,14 +1893,32 @@ function saveHabit() {
   const note = document.getElementById('sh-note').value.trim();
   const pref = document.querySelector('#sh-pref .sel')?.dataset.val || '';
   if (!pref) { toast('Pick morning, afternoon, night or a specific time.'); return; }
-  const time = pref === 'time' ? document.getElementById('sh-time').value : '';
-  if (pref === 'time' && !time) { toast('Pick a time.'); return; }
+  // Specific time: one or more times a day, optionally different per weekday
+  let times = null, dayTimes = null;
+  if (pref === 'time') {
+    harvestShTimes();
+    const clean = l => [...new Set((l || []).filter(Boolean))].sort();
+    if (shT.perday && mode !== 'freq') {
+      dayTimes = {};
+      for (const d of days) {
+        const l = clean(shT.dayTimes[d]);
+        if (!l.length) { toast('Pick a time for ' + d + '.'); return; }
+        dayTimes[d] = l;
+      }
+      times = dayTimes[days[0]];
+    } else {
+      times = clean(shT.times);
+    }
+    if (!times.length) { toast('Pick a time.'); return; }
+  }
   const editId = document.getElementById('sh-id').value;
   if (editId) {
     const hx = habits.find(x => x.id === editId);
     if (hx) {
       hx.name = name; hx.cat = cat; hx.dur = dur; hx.days = days; hx.note = note; hx.pref = pref; hx.mode = mode;
-      if (time) hx.time = time; else delete hx.time;
+      delete hx.time; // old single-time field, superseded by times[]
+      if (times) hx.times = times; else delete hx.times;
+      if (dayTimes) hx.dayTimes = dayTimes; else delete hx.dayTimes;
       // target only means anything in frequency mode — leaving it set after
       // switching to fixed-days is exactly the kind of stale-field residue
       // that made an earlier data bug (a habit's leftover target from a
@@ -1801,7 +1927,8 @@ function saveHabit() {
     }
   } else {
     const h = { id: Date.now() + '-' + Math.random().toString(36).slice(2), name, cat, dur, days, note, pref, mode };
-    if (time) h.time = time;
+    if (times) h.times = times;
+    if (dayTimes) h.dayTimes = dayTimes;
     if (mode === 'freq') h.target = target;
     habits.push(h);
   }
@@ -2357,7 +2484,7 @@ function renderTimeline() {
   const dn = dayName();
   const tlKey = 'bios_tl_' + dateKey(now);
   // Bump when the timeline's build rules change so old cached days rebuild.
-  const TL_LAYOUT = 'clock-v2';
+  const TL_LAYOUT = 'clock-v3';
 
   // Parse time helpers
   function toMins(t) { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; }
@@ -2438,19 +2565,23 @@ function renderTimeline() {
       }
       return (h.days||[]).includes(dn);
     });
-    const habitBlock = (h, m) => ({
-      id:'h_'+h.id, time:minsToTime(m), absMins:m, type:h.cat,
-      title:h.name, detail:h.dur+' min'+(h.note?' · '+h.note:''),
+    const habitBlock = (h, m, slot, n) => Object.assign({
+      id:'h_'+h.id+(slot !== undefined ? '_'+slot : ''), time:minsToTime(m), absMins:m, type:h.cat,
+      title:h.name+(slot !== undefined ? ' · '+(slot+1)+' of '+n : ''), detail:h.dur+' min'+(h.note?' · '+h.note:''),
       key:h.cat==='fitness'||h.cat==='trading', fixed:false, habitId:h.id
-    });
-    // "Specific time" habits go exactly where the user put them, and the
-    // morning/afternoon/night ones flow around them like appointments.
+    }, slot !== undefined ? { slot } : {});
+    // "Specific time" habits go exactly where the user put them — one block
+    // per time when there are several — and the morning/afternoon/night
+    // ones flow around them like appointments.
     const flexH = [];
     todayH.forEach(h => {
-      const m = habitFixedMins(h);
-      if (m === null) { flexH.push(h); return; }
-      customBlocks.push(habitBlock(h, m));
-      busy.push({ start: m - BUF, end: m + h.dur + BUF });
+      const slots = habitSlotsOn(h, dn);
+      if (!slots || !slots.length) { flexH.push(h); return; }
+      slots.forEach((t, i) => {
+        const m = slotToMins(t);
+        customBlocks.push(habitBlock(h, m, slots.length > 1 ? i : undefined, slots.length));
+        busy.push({ start: m - BUF, end: m + h.dur + BUF });
+      });
     });
     // place earlier windows first so one habit's window can't push another's
     const ordered = flexH.slice().sort((a,b) => habitPrefStart(a) - habitPrefStart(b));
@@ -2496,7 +2627,8 @@ function renderTimeline() {
   const _retimes = getRetimes(now);
   if (Object.keys(_retimes).length) {
     customBlocks = customBlocks.map(b => {
-      if (!b.habitId || !_retimes[b.habitId]) return b;
+      // "move for today" is a single-time feature; several-times habits keep their times
+      if (!b.habitId || b.slot !== undefined || !_retimes[b.habitId]) return b;
       const hhmm = _retimes[b.habitId];
       const mins = toMins(hhmm);
       if (mins === null) return b;
@@ -2514,7 +2646,7 @@ function renderTimeline() {
   const nowAbsForCheck = nowHM < wakeMins ? nowHM + 1440 : nowHM;
   customBlocks = customBlocks.map(b => {
     if (!b.habitId) return b;
-    const doneAt = checks[todayKeyForChecks] && checks[todayKeyForChecks][b.habitId];
+    const doneAt = checks[todayKeyForChecks] && checks[todayKeyForChecks][b.slot !== undefined ? b.habitId + '#' + b.slot : b.habitId];
     if (!doneAt || typeof doneAt !== 'number') return b;
     const d = new Date(doneAt);
     const mins = d.getHours() * 60 + d.getMinutes();
@@ -2550,7 +2682,7 @@ function renderTimeline() {
     // original time, until you confirm it yourself. Appointments/fixed
     // blocks have no "done" concept of their own, so they keep the
     // time-based "already happened" treatment.
-    const reallyDone = !!(b.habitId && checksToday[b.habitId]);
+    const reallyDone = !!(b.habitId && checksToday[b.slot !== undefined ? b.habitId + '#' + b.slot : b.habitId]);
     const rowDone = b.habitId ? reallyDone : isPast;
 
     // Insert NOW line before first future block
@@ -2566,7 +2698,7 @@ function renderTimeline() {
     const isCustom = String(b.id).startsWith('c_');
     const delBtn = isCustom ? '<button class="tl-del" onclick="event.stopPropagation();deleteTlBlock(\'' + b.id + '\')">✕</button>' : '';
     // habit blocks can be moved to a different time for today only
-    const retimeBtn = b.habitId
+    const retimeBtn = (b.habitId && b.slot === undefined)
       ? '<button class="tl-del" style="color:var(--cyan);" title="Move for today" onclick="event.stopPropagation();openRetime(\'' + b.habitId + '\')">' + svgIcon('clock',12) + '</button>'
       : '';
     // Habits and appointments live in this one merged list now — a habit
@@ -2578,7 +2710,9 @@ function renderTimeline() {
     // through the same confirm step every other delete in this app does.
     const kindLabel = b.habitId ? ('Habit · ' + (b.type||'other')) : (b.apptId ? ('Appt · ' + (b.type||'other')) : (b.type || 'other'));
     const rowClickAttr = b.habitId
-      ? ` onclick="toggleCheck('${b.habitId}')" style="cursor:pointer;"`
+      ? (b.slot !== undefined
+          ? ` onclick="toggleHabitCheck('${b.habitId}','${dateKey(now)}',${b.slot})" style="cursor:pointer;"`
+          : ` onclick="toggleCheck('${b.habitId}')" style="cursor:pointer;"`)
       : (b.apptId ? ` onclick="editAppt('${b.apptId}')" style="cursor:pointer;"` : '');
     const habitCheck = b.habitId ? '<div class="habit-check' + (reallyDone ? ' done' : '') + '" style="width:20px;height:20px;margin-top:1px;"></div>' : '';
 
@@ -3245,7 +3379,8 @@ function calHabitsOn(dateStr) {
         _start: mins, _end: mins + h.dur, isHabit: true, isDoneHabit: true, overflow: false });
       return;
     }
-    if (retimes[h.id]) {
+    const slots = habitSlotsOn(h, dn);
+    if (retimes[h.id] && !(slots && slots.length > 1)) {
       const mins = calToMin(retimes[h.id]);
       if (mins !== null) {
         out.push({ id: 'h_' + h.id, habitId: h.id, title: h.name, cat: h.cat, note: '', date: dateStr,
@@ -3253,11 +3388,16 @@ function calHabitsOn(dateStr) {
         return;
       }
     }
-    const fixedM = habitFixedMins(h);
-    if (fixedM !== null) {
-      out.push({ id: 'h_' + h.id, habitId: h.id, title: h.name, cat: h.cat, note: '', date: dateStr,
-        _start: fixedM, _end: fixedM + h.dur, isHabit: true, overflow: false });
-      busy.push({ start: fixedM - 10, end: fixedM + h.dur + 10 });
+    if (slots && slots.length) {
+      const multi = slots.length > 1;
+      slots.forEach((t, i) => {
+        const m = slotToMins(t);
+        const e = { id: 'h_' + h.id + (multi ? '_' + i : ''), habitId: h.id, title: h.name + (multi ? ' · ' + (i+1) + ' of ' + slots.length : ''),
+          cat: h.cat, note: '', date: dateStr, _start: m, _end: m + h.dur, isHabit: true, overflow: false };
+        if (multi) e.slot = i;
+        out.push(e);
+        busy.push({ start: m - 10, end: m + h.dur + 10 });
+      });
       return;
     }
     toPlace.push(h);
@@ -3606,7 +3746,10 @@ function calRenderMonth() {
 // solid. Tapping a habit block toggles it done for that date; tapping an
 // appointment opens the edit sheet.
 function calBlockColor(e) { return e.isHabit ? (CAT_COLOR[e.cat] || '#8855ff') : (EVENT_CAT_COLOR[e.cat] || '#8855ff'); }
-function calBlockClickAttr(e) { return e.isHabit ? `toggleCheckOn('${e.habitId}','${e.date}',true)` : `editAppt('${e.id}')`; }
+function calBlockClickAttr(e) {
+  if (!e.isHabit) return `editAppt('${e.id}')`;
+  return e.slot !== undefined ? `toggleHabitCheck('${e.habitId}','${e.date}',${e.slot},true)` : `toggleCheckOn('${e.habitId}','${e.date}',true)`;
+}
 function calBlockBorderCSS(e, col) {
   return e.isHabit
     ? `background:${col}12;border:1px dashed ${col}66;border-left:2px dashed ${col};`
@@ -4173,7 +4316,7 @@ function computeDayBudget(dateStr) {
   const dn = dayName(calParse(dateStr));
   const habitMins = (habits||[])
     .filter(h => isFreq(h) ? true : (h.days||[]).includes(dn))
-    .reduce((a,h) => a + (h.dur || 0), 0);
+    .reduce((a,h) => a + (h.dur || 0) * habitSlotCount(h, dn), 0);
   return { planned: busyMins + habitMins, apptMins: busyMins, habitMins };
 }
 
