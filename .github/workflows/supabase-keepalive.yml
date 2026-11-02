@@ -1,0 +1,27 @@
+# Free-tier Supabase projects pause after ~7 days with no requests, which
+# makes login fail ("Load failed") until the project is restored by hand.
+# One tiny read a day keeps it awake. Uses the public anon key already in
+# config.js (RLS returns no rows) — no secrets needed.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # daily, 09:17 UTC
+  workflow_dispatch:        # "Run workflow" button for a manual test
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -o "https://[a-z0-9]*\.supabase\.co" config.js | head -1)
+          KEY=$(sed -n "s/.*BIOS_SUPABASE_ANON_KEY *= *'\([^']*\)'.*/\1/p" config.js)
+          code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' \
+            "$URL/rest/v1/bios_data?select=user_id&limit=1" -H "apikey: $KEY")
+          echo "Supabase answered HTTP $code"
+          test "$code" -lt 400

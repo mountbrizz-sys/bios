@@ -29,6 +29,10 @@ function fakeSupabase(opts) {
       getSession: async () => ({ data: { session: opts.session || null } }),
       onAuthStateChange: () => {},
       signOut: async () => ({}),
+      // login fails the way Safari reports a dead server when opts.cloudDown
+      signInWithPassword: async () => opts.cloudDown
+        ? { data: null, error: { name: 'AuthRetryableFetchError', message: 'Load failed' } }
+        : { data: { session: SESSION }, error: null },
     },
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: opts.cloudRow || null, error: null }) }) }),
@@ -38,7 +42,7 @@ function fakeSupabase(opts) {
   return { client, pushes };
 }
 
-// opts: { local: {key: obj}, session, cloudRow, noClient }
+// opts: { local: {key: obj}, session, cloudRow, noClient, cloudDown }
 async function boot(opts) {
   const errors = [];
   const vc = new VirtualConsole();
@@ -49,7 +53,8 @@ async function boot(opts) {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.com/', virtualConsole: vc,
     beforeParse(win) {
       win.Date = FixedDate;
-      win.Element.prototype.scrollTo = () => {}; // jsdom doesn't implement it
+      // jsdom has no fetch; the startup reachability check uses it
+      win.fetch = async () => { if (opts.cloudDown) throw new TypeError('Load failed'); return { status: 200 }; };
       if (!opts.noClient) {
         win.BIOS_SUPABASE_URL = 'https://fake.supabase.co';
         win.BIOS_SUPABASE_ANON_KEY = 'anon';
@@ -67,7 +72,7 @@ async function boot(opts) {
     appShown: () => doc.getElementById('app').style.display === 'flex',
     splashShown: () => doc.getElementById('splash').style.display !== 'none'
       && doc.getElementById('splashActions').style.visibility === 'visible',
-    onboardShown: () => doc.getElementById('screen-onboard').classList.contains('active'),
+    onboardShown: () => !!doc.getElementById('screen-onboard'),
     stored: (k) => JSON.parse(w.localStorage.getItem(k) || 'null'),
   };
 }
@@ -110,24 +115,8 @@ async function boot(opts) {
     check('SYNC SAFETY: real local data + account data still shows the conflict screen',
       t.doc.getElementById('syncConflictScreen').style.display === 'flex');
 
-    // F — editing the profile keeps the user's habits untouched
-    t = await boot({ session: SESSION, local: { bios_profile: realProfile, bios_habits: realHabits } });
-    t.w.editProfile();
-    t.doc.getElementById('ob-name').value = 'Sam';
-    for (let step = 1; step <= 6; step++) t.w.ob_next(step);
-    t.w.finishOnboard();
-    check('edit profile saves the new name', t.stored('bios_profile').name === 'Sam');
-    check('BUG FIX: edit profile keeps habits (no regeneration)', JSON.stringify(t.stored('bios_habits')) === JSON.stringify(realHabits));
-    check('edit profile keeps the original created date', t.stored('bios_profile').created === 1);
-
-    // F2 — editor has no required fields
-    t = await boot({ session: SESSION });
-    t.w.editProfile();
-    t.doc.getElementById('ob-name').value = '';
-    t.w.ob_next(1);
-    check('editor: empty name is allowed', t.doc.getElementById('ob2').classList.contains('active'));
-    t.w.ob_next(2); t.w.ob_next(3);
-    check('editor: zero focus areas is allowed', t.doc.getElementById('ob4').classList.contains('active'));
+    // F — the onboarding / profile-editor screen is gone entirely
+    check('onboarding screen no longer exists in the page', !t.onboardShown() && typeof t.w.editProfile === 'undefined');
 
     // H — Plan actions: Log out is there when logged in, Edit (onboarding) is gone
     t = await boot({ session: SESSION, local: { bios_profile: realProfile, bios_habits: realHabits } });
@@ -142,6 +131,33 @@ async function boot(opts) {
     t = await boot({ noClient: true });
     check('offline with no data: splash explains the connection problem',
       t.splashShown() && /connection/.test(t.doc.getElementById('splashNotice').textContent));
+
+    // I — logged out, Supabase down (e.g. paused project), data on device: open it offline
+    t = await boot({ cloudDown: true, local: { bios_profile: realProfile, bios_habits: realHabits } });
+    check('OFFLINE FALLBACK: Supabase down + local data → app opens', t.appShown() && !t.splashShown());
+    check('offline entry tells the user it is offline', /Offline/.test(t.doc.getElementById('toast').textContent));
+    check('offline entry never pushes to the account', t.pushes.length === 0);
+    check('Plan offers Log in while offline', /Log in/.test(t.doc.getElementById('planActions').textContent));
+
+    // J — Supabase down but nothing on this device: nothing to open, splash as usual
+    t = await boot({ cloudDown: true });
+    check('Supabase down + no local data → splash (login needed)', t.splashShown() && !t.appShown());
+
+    // K — login attempt fails because the server is unreachable
+    t = await boot({ local: { bios_profile: realProfile, bios_habits: realHabits } });
+    check('reachable server + local data still requires login', t.splashShown() && !t.appShown());
+    t.w.showAuthScreen();
+    t.doc.getElementById('auth-email').value = 'test@example.com';
+    t.doc.getElementById('auth-password').value = 'password123';
+    const fake = t.w.supabase.createClient();
+    fake.auth.signInWithPassword = async () => ({ data: null, error: { name: 'AuthRetryableFetchError', message: 'Load failed' } });
+    await t.w.submitAuth();
+    check('network login failure shows a clear message, not "Load failed"',
+      /Can't reach the server/.test(t.doc.getElementById('authError').textContent));
+    const offBtn = t.doc.getElementById('authOfflineBtn');
+    check('…and offers "Open this device\'s data (offline)"', offBtn.style.display === 'block');
+    offBtn.click();
+    check('tapping it opens the app with local data', t.appShown());
   } catch (e) {
     console.error('TEST THREW:', e);
     failures++;
