@@ -706,12 +706,12 @@
     <div style="font-family:var(--display);font-size:72px;font-weight:800;color:var(--lime);letter-spacing:-0.03em;line-height:1;">Bios</div>
     <div style="font-size:16px;color:var(--text2);margin-top:12px;margin-bottom:60px;line-height:1.6;">Build your life.<br>One area at a time.</div>
   </div>
-  <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;">
-    <button class="splash-btn" onclick="startOnboard()">Get started</button>
-    <button class="splash-btn ghost" onclick="triggerRestore()">Restore from backup</button>
-    <div id="splashAuthLink" style="display:none;text-align:center;margin-top:4px;">
-      <span onclick="showAuthScreen()" style="font-size:13px;color:var(--text3);cursor:pointer;text-decoration:underline;">Have an account? Log in</span>
-    </div>
+  <!-- hidden until the startup session check decides where to go, so a
+       logged-in user doesn't see the login buttons flash first -->
+  <div id="splashActions" style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;visibility:hidden;">
+    <button class="splash-btn" onclick="showAuthScreen()">Log in</button>
+    <button class="splash-btn ghost" onclick="showAuthScreen(); showAuthMode('signup')">Create an account</button>
+    <div id="splashNotice" style="display:none;font-size:13px;color:var(--text3);text-align:center;margin-top:4px;line-height:1.5;"></div>
   </div>
 </div>
 
@@ -720,7 +720,7 @@
 <div id="authScreen" style="display:none;position:fixed;inset:0;z-index:400;background:var(--bg);flex-direction:column;padding:60px 24px 40px;">
   <div style="text-align:center;margin-bottom:32px;">
     <div style="font-family:var(--display);font-size:44px;font-weight:800;color:var(--lime);letter-spacing:-0.03em;">Bios</div>
-    <div id="authSubtitle" style="font-size:14px;color:var(--text2);margin-top:8px;">Log in to sync your data</div>
+    <div id="authSubtitle" style="font-size:14px;color:var(--text2);margin-top:8px;">Log in to continue</div>
   </div>
 
   <div style="width:100%;max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
@@ -800,6 +800,7 @@
       <input class="ob-input" id="ob-name" type="text" placeholder="First name" autocomplete="given-name">
     </div>
     <button class="ob-next" onclick="ob_next(1)">Continue →</button>
+    <button class="ob-back" onclick="cancelEditProfile()">Cancel</button>
   </div>
 
   <div class="onboard-page" id="ob2">
@@ -921,13 +922,13 @@
 
   <div class="onboard-page" id="ob7">
     <div class="ob-step"><span>7</span> / 7</div>
-    <div class="ob-display">Your system<br>is <em>ready.</em></div>
+    <div class="ob-display">Looks<br><em>good?</em></div>
     <div class="ob-sub" id="ob-summary" style="background:var(--s2);border-radius:16px;padding:20px;font-size:14px;line-height:1.8;"></div>
     <div style="margin-top:24px;background:rgba(198,255,78,0.06);border:1px solid rgba(198,255,78,0.2);border-radius:16px;padding:18px;">
       <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--lime);margin-bottom:8px;">One rule</div>
       <div style="font-size:14px;color:var(--text2);line-height:1.7;">Open Bios every day. Check off habits. Even if you only do one. The streak is the system — everything else follows from that.</div>
     </div>
-    <button class="ob-next" onclick="finishOnboard()" style="margin-top:32px;">Start building →</button>
+    <button class="ob-next" onclick="finishOnboard()" style="margin-top:32px;">Save changes</button>
     <button class="ob-back" onclick="ob_back(7)">← Back</button>
   </div>
 </div>
@@ -1345,22 +1346,18 @@ function maxStreak() {
   return Math.max(...habits.map(h => computeStreak(h)));
 }
 
-// ── STARTUP ──
-window.onload = () => {
-  if (profile && habits) { hideSplash(); document.getElementById('screen-onboard').style.display='none'; showApp(); checkWeeklyReview(); }
-};
-
-// ── SPLASH / ONBOARD ──
+// ── SPLASH ──
+// Entry is decided once the session check in APP INIT finishes: logged in →
+// straight into the app, logged out → splash with Log in / Create account.
 function hideSplash() { document.getElementById('splash').style.display = 'none'; }
-function startOnboard() { hideSplash(); document.getElementById('screen-onboard').classList.add('active'); }
-// after restoring a backup, skip the splash and go straight in
-(function autoEnterAfterRestore() {
-  if (localStorage.getItem('bios_just_restored') !== '1') return;
-  localStorage.removeItem('bios_just_restored');
-  document.addEventListener('DOMContentLoaded', () => {
-    if (profile && habits) loadExisting();
-  });
-})();
+function showSplash(notice) {
+  document.getElementById('splash').style.display = 'flex';
+  document.getElementById('splashActions').style.visibility = 'visible';
+  const n = document.getElementById('splashNotice');
+  if (n) { n.textContent = notice || ''; n.style.display = notice ? 'block' : 'none'; }
+}
+// a restore reloads the page; the session check below takes it from there
+localStorage.removeItem('bios_just_restored');
 function loadExisting() {
   if (profile && habits) { hideSplash(); document.getElementById('screen-onboard').style.display='none'; showApp(); checkWeeklyReview(); }
   else toast('No profile here — restore a backup or start fresh.');
@@ -1380,7 +1377,6 @@ function pickCard(el) { el.classList.toggle('selected'); }
 function ob_next(step) {
   if (step===1) {
     ob.name = document.getElementById('ob-name').value.trim();
-    if (!ob.name) { toast('Enter your name first.'); return; }
   }
   if (step===2) {
     ob.sched = document.querySelector('#schedChips .selected')?.textContent || 'Flexible';
@@ -1390,12 +1386,10 @@ function ob_next(step) {
   }
   if (step===3) {
     ob.focus = [...document.querySelectorAll('#focusCards .selected')].map(c => c.dataset.val);
-    if (!ob.focus.length) { toast('Pick at least one area.'); return; }
   }
   if (step===4) {
     ob.goal = document.getElementById('ob-goal').value.trim();
     ob.time = parseInt(document.getElementById('ob-time').value);
-    if (!ob.goal) { toast('Write your #1 goal.'); return; }
   }
   if (step===5) {
     ob.fail = [...document.querySelectorAll('#failChips .selected')].map(c => c.textContent);
@@ -1420,9 +1414,29 @@ function buildSummary() {
   document.getElementById('ob-summary').innerHTML = `<strong style="color:var(--lime)">${ob.name}</strong> · ${ob.sched} · ${ob.wday} days/wk<br>Wake ${ob.wake ? fmtTime(ob.wake) : ""} · Sleep ${ob.sleep ? fmtTime(ob.sleep) : ""}<br>Focus: ${ob.focus.join(', ')}<br>Goal: <em>${ob.goal}</em><br>Daily time: ${ob.time} min${recCount?`<br>Recurring: ${recCount} activit${recCount===1?'y':'ies'}`:''}`; 
 }
 
+// A logged-in account with no data yet starts here: defaults only, no
+// habits, no recurring. Everything else is added from inside the app.
+function createBlankProfile() {
+  profile = profile || { name:'', wake:'07:00', sleep:'23:00', goal:'', time:30, sched:'', wday:'',
+    focus:[], fail:[], recurring:[], created: Date.now(), blank: true };
+  habits = habits || [];
+  save();
+}
+// An untouched blank profile isn't real data — logging into an account that
+// has data must pull it, not raise a conflict over an empty device.
+function isBlankProfile() {
+  return !!(profile && profile.blank) && !(habits || []).length && !(profile.recurring || []).length
+    && !(appts || []).length && !(tasks || []).length && !(deadlines || []).length
+    && !Object.keys(checks || {}).length;
+}
+
+// Saves the profile editor (the old onboarding screens). Habits are the
+// user's own — editing the profile must never regenerate or replace them.
 function finishOnboard() {
-  profile = { ...ob, created: Date.now() };
-  habits = buildDefaultHabits();
+  const prev = profile || {};
+  profile = { ...prev, ...ob, created: prev.created || Date.now() };
+  delete profile.blank;
+  habits = habits || [];
 
   // Recurring appointments are derived data — clear and let the single
   // generator rebuild them so per-day times are always honoured.
@@ -1435,33 +1449,27 @@ function finishOnboard() {
   ob_el.classList.remove('active');
   ob_el.style.display = 'none';
   showApp();
+  toast('Profile saved ✓');
 }
-function buildDefaultHabits() {
-  const h = [];
-  const add = (name, cat, dur, days, note) =>
-    h.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2), name, cat, dur, days, note });
-  const { focus } = ob;
-  if (focus.includes('mindfulness')) add('Morning journal / breathing','mindfulness',10,DAYS,'Before phone. Sets tone for day.');
-  if (focus.includes('fitness'))     add('Gym session','fitness',60,['Mon','Tue','Thu','Sat'],'Log every set. Progressive overload.');
-  if (focus.includes('nutrition'))   add('Hit protein target','nutrition',5,DAYS,'~0.8g/lb bodyweight. Track it.');
-  if (focus.includes('trading'))     add('Pre-market briefing','trading',15,['Mon','Tue','Wed','Thu','Fri'],'Key levels, bias, scenario plan.');
-  if (focus.includes('trading'))     add('Trade journal','trading',10,['Mon','Tue','Wed','Thu','Fri'],'One honest sentence per session.');
-  if (focus.includes('learning'))    add('Study block','learning',30,['Tue','Thu','Sat','Sun'],'Deep work. No distractions.');
-  if (focus.includes('sleep'))       add('In bed on time','sleep',5,DAYS,`Lights out by ${ob.sleep ? fmtTime(ob.sleep) : '11:00 PM'}.`);
-  if (focus.includes('finance'))     add('Budget check-in','finance',10,['Mon'],'Weekly review. Awareness precedes control.');
-  if (focus.includes('social'))      add('Intentional connection','social',15,['Wed','Sat'],'Text, call, or meet someone on purpose.');
-  return h;
+function cancelEditProfile() {
+  const ob_el = document.getElementById('screen-onboard');
+  ob_el.classList.remove('active');
+  ob_el.style.display = 'none';
+  showApp();
 }
-
 // ── APP INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Bios build] sync-fix-2026-09-05-1946'); // bump this string every deploy so we can confirm which build is actually live
+  console.log('[Bios build] login-no-onboarding-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
   const client = initSupabase();
-  if (client) {
-    const link = document.getElementById('splashAuthLink');
-    if (link) link.style.display = 'block';
-
-    await rehydrateSession(client);
+  if (!client) {
+    // Login service unreachable (offline, SDK failed to load, or config.js
+    // missing). Never lock someone out of data already on this device.
+    if (profile && habits) loadExisting();
+    else showSplash("Can't reach the login service. Check your connection and reload.");
+    return;
+  }
+  {
+    try { await rehydrateSession(client); } catch (e) { console.error('Bios session check failed:', e); }
     if (typeof renderPlanActions === 'function') renderPlanActions(); // reflect real session state once rehydration finishes
 
     // Password recovery links land back here with a recovery token in the URL.
@@ -1472,6 +1480,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         showAuthMode('reset');
       }
     });
+
+    if (bios_session) {
+      if (profile && habits) loadExisting();
+      else await onAuthSuccess(bios_session); // logged in on a fresh device — pull the account's data
+    } else {
+      showSplash();
+    }
   }
 });
 
@@ -1925,7 +1940,9 @@ function resetProfile() {
   localStorage.removeItem('bios_checks');
   localStorage.removeItem('bios_appts');
   localStorage.removeItem('bios_last_review');
-  location.reload();
+  profile = null; habits = null; checks = {}; appts = [];
+  createBlankProfile();
+  flushBeforeReload().finally(() => location.reload());
 }
 function tli(time, type, title, detail, key=false) {
   return `<div class="tl-item${key?' key':''}">
@@ -4860,7 +4877,7 @@ function decideSyncAction(hasLocal, hasCloud) {
 }
 
 function hasLocalData() {
-  return !!(profile && habits);
+  return !!(profile && habits) && !isBlankProfile();
 }
 
 async function fetchCloudRow() {
@@ -4978,7 +4995,7 @@ function showAuthMode(mode) {
   const switchLink = document.getElementById('authSwitchLink');
 
   if (mode === 'login') {
-    subtitle.textContent = 'Log in to sync your data';
+    subtitle.textContent = 'Log in to continue';
     pwField.style.display = 'block';
     confirmField.style.display = 'none';
     forgotRow.style.display = 'block';
@@ -5103,8 +5120,8 @@ async function logOut() {
 
 function finishAuthEntry() {
   hideAuthScreen();
-  if (profile && habits) loadExisting();
-  else document.getElementById('splash').style.display = 'flex';
+  if (!(profile && habits)) createBlankProfile();
+  loadExisting();
 }
 
 async function onAuthSuccess(session) {
