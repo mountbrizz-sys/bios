@@ -88,7 +88,7 @@ async function boot(opts) {
     // C — logged in, brand-new account: straight into the app with a blank profile, zero habits
     t = await boot({ session: SESSION });
     check('new account: app opens directly', t.appShown() && !t.onboardShown());
-    check('new account: blank profile created with defaults', t.stored('bios_profile') && t.stored('bios_profile').wake === '07:00');
+    check('new account: blank profile created, with no wake/sleep setting', t.stored('bios_profile') && t.stored('bios_profile').blank === true && !('wake' in t.stored('bios_profile')));
     check('new account: zero habits is allowed', Array.isArray(t.stored('bios_habits')) && t.stored('bios_habits').length === 0);
     check('Plan habits section renders the empty state', /No habits yet/.test(t.doc.getElementById('habitsMgr').textContent));
     check('new account: no runtime errors', t.errors.length === 0);
@@ -128,6 +128,13 @@ async function boot(opts) {
     check('editor: empty name is allowed', t.doc.getElementById('ob2').classList.contains('active'));
     t.w.ob_next(2); t.w.ob_next(3);
     check('editor: zero focus areas is allowed', t.doc.getElementById('ob4').classList.contains('active'));
+
+    // H — Plan actions: Log out is there when logged in, Edit (onboarding) is gone
+    t = await boot({ session: SESSION, local: { bios_profile: realProfile, bios_habits: realHabits } });
+    const actions = t.doc.getElementById('planActions');
+    check('Plan shows a Log out button when logged in', !!t.doc.getElementById('planLogoutBtn'));
+    check('Plan shows the logged-in email', /test@example\.com/.test(actions.textContent));
+    check('Plan no longer has the Edit button', !/Edit/.test(actions.textContent) && !actions.querySelector('[onclick*="editProfile"]'));
 
     // G — login service unreachable but data on device: never lock the user out
     t = await boot({ noClient: true, local: { bios_profile: realProfile, bios_habits: realHabits } });

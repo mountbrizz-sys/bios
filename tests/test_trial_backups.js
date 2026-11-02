@@ -53,7 +53,7 @@ function loadTrialUser(label, backupPath, assertions) {
 
 loadTrialUser('Maria (busy student)', './trial_maria_backup.json', (window, doc) => {
   check('profile name loaded correctly', doc.getElementById('today-date').textContent.includes('Fri'));
-  check('budget hero card rendered', doc.getElementById('timeBudgetCard').innerHTML.includes('Free today'));
+  check('budget hero card rendered', doc.getElementById('timeBudgetCard').innerHTML.includes('Booked today'));
   check('deadline nudge shows the essay due today', doc.getElementById('dlNudge').innerHTML.includes('Essay due'));
   const tl = doc.getElementById('todayTimeline').innerHTML;
   check('merged schedule shows the overlapping Team meeting appt', tl.includes('Team meeting'));

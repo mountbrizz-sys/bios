@@ -106,11 +106,11 @@ window.Date = FixedDate;
     window.openWeeklyReview();
     check('weekly review opens', doc.getElementById('reviewOverlay').classList.contains('open'));
     const statsHTML = doc.getElementById('reviewStats').innerHTML;
-    check('review shows 5 stat cards including Overloaded days', doc.querySelectorAll('#reviewStats .review-stat').length === 5);
-    check('review stats include an Overloaded days label', statsHTML.includes('Overloaded days'));
+    check('review shows 5 stat cards including Hours booked', doc.querySelectorAll('#reviewStats .review-stat').length === 5);
+    check('review stats include an Hours booked label (no wake/sleep, so no overload figure)', statsHTML.includes('Hours booked'));
     const loadHTML = doc.getElementById('reviewLoad').innerHTML;
     check('review load section renders 7 day rows', doc.querySelectorAll('#reviewLoad .review-load-row').length === 7);
-    check('load rows show a free-time figure', /\d+(\.\d+)?h free/.test(loadHTML));
+    check('load rows show a booked-time figure', /\d+(\.\d+)?h booked/.test(loadHTML));
     check('today\'s row is marked in the load section', loadHTML.includes('review-load-day">Tue') || /Tue.*•|Wed.*•/.test(loadHTML));
     // No snapshot existed before this test run started, so every row should
     // show the "no drift data yet" dash rather than a fabricated comparison.
@@ -118,10 +118,9 @@ window.Date = FixedDate;
     window.closeReview();
     check('weekly review closes', !doc.getElementById('reviewOverlay').classList.contains('open'));
 
-    // computeDayBudget sanity: a date with no appts/habits scheduled should
-    // return the full waking window minus overhead, never negative.
+    // computeDayBudget sanity: a date with nothing scheduled books zero time.
     const emptyDayBudget = window.computeDayBudget('2026-01-01');
-    check('computeDayBudget on an empty date returns a sane positive capacity', emptyDayBudget.capacity > 0 && emptyDayBudget.overloaded === false);
+    check('computeDayBudget on a date with no appointments books no appointment time, and has no free/overload figure', emptyDayBudget.apptMins === 0 && !('capacity' in emptyDayBudget) && !('overloaded' in emptyDayBudget));
 
     // ── DRIFT MECHANISM END-TO-END: does it actually detect a late add? ──
     const navToday = [...doc.querySelectorAll('.nav-item')].find(n => n.textContent.trim() === 'Today');
@@ -129,7 +128,7 @@ window.Date = FixedDate;
     const todayKey = '2026-09-09';
     const snapAfterFirstOpen = JSON.parse(window.localStorage.getItem('bios_day_snapshot'))[todayKey];
     check('opening Today snapshots the budget for today', !!snapAfterFirstOpen);
-    const beforeCapacity = snapAfterFirstOpen.capacity;
+    const beforePlanned = snapAfterFirstOpen.planned;
 
     // Simulate a same-day late addition via the real save flow (appts is a
     // top-level let, not reachable as window.appts — same jsdom quirk as
@@ -141,7 +140,7 @@ window.Date = FixedDate;
     doc.getElementById('appt-end').value = '17:00';
     window.saveAppt();
     const afterBudget = window.computeDayBudget(todayKey);
-    check('adding a same-day appointment reduces the recomputed final capacity', afterBudget.capacity < beforeCapacity);
+    check('adding a same-day appointment increases the recomputed booked time', afterBudget.planned > beforePlanned);
 
     window.openWeeklyReview();
     const loadHTML2 = doc.getElementById('reviewLoad').innerHTML;

@@ -63,6 +63,7 @@ window.Date = FixedDate;
     // Create a frequency-mode habit (target should be present).
     window.openSheet();
     doc.getElementById('sh-name').value = 'Gym';
+    doc.querySelector('#sh-pref [data-val="morning"]').click(); // time of day is now a required pick
     const freqBtn = [...doc.querySelectorAll('#sh-mode .sh-chip, #sh-mode [data-val]')].find(el => el.dataset.val === 'freq');
     if (freqBtn) freqBtn.click();
     window.saveHabit();

@@ -1152,10 +1152,16 @@
     <div class="sh-field">
       <label class="sh-label">Preferred time</label>
       <div class="sh-chips" id="sh-pref">
-        <div class="sh-chip sel" onclick="pickShPref(this)" data-val="any">Anytime</div>
         <div class="sh-chip" onclick="pickShPref(this)" data-val="morning">Morning</div>
         <div class="sh-chip" onclick="pickShPref(this)" data-val="afternoon">Afternoon</div>
-        <div class="sh-chip" onclick="pickShPref(this)" data-val="evening">Evening</div>
+        <div class="sh-chip" onclick="pickShPref(this)" data-val="evening">Night</div>
+        <div class="sh-chip" onclick="pickShPref(this)" data-val="time">Specific time</div>
+      </div>
+      <div id="sh-time-field" style="display:none;margin-top:8px;">
+        <div onclick="openRecTimePicker('sh-time', this)" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;text-align:center;">
+          <span id="sh-time-display" style="font-family:var(--font);font-size:18px;font-weight:700;color:var(--text);">Pick a time</span>
+          <input type="hidden" id="sh-time" value="">
+        </div>
       </div>
     </div>
     <div class="sh-field">
@@ -1417,7 +1423,7 @@ function buildSummary() {
 // A logged-in account with no data yet starts here: defaults only, no
 // habits, no recurring. Everything else is added from inside the app.
 function createBlankProfile() {
-  profile = profile || { name:'', wake:'07:00', sleep:'23:00', goal:'', time:30, sched:'', wday:'',
+  profile = profile || { name:'', goal:'', time:30, sched:'', wday:'',
     focus:[], fail:[], recurring:[], created: Date.now(), blank: true };
   habits = habits || [];
   save();
@@ -1459,7 +1465,7 @@ function cancelEditProfile() {
 }
 // ── APP INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Bios build] login-no-onboarding-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
+  console.log('[Bios build] habit-time-of-day-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
   const client = initSupabase();
   if (!client) {
     // Login service unreachable (offline, SDK failed to load, or config.js
@@ -1626,6 +1632,25 @@ function confetti() {
   }
 }
 
+// ── HABIT TIME OF DAY ──
+// There's no wake/sleep setting: each habit says when it happens. Morning /
+// Afternoon / Night start the free-gap search at these clock times; a
+// "Specific time" habit sits exactly at h.time. Habits saved before this
+// (pref 'any' or none) are treated as Morning.
+const HABIT_PREF_START = { morning: 6 * 60, afternoon: 12 * 60, evening: 17 * 60 };
+function habitPref(h) {
+  const p = h && h.pref;
+  return (p === 'afternoon' || p === 'evening' || p === 'time') ? p : 'morning';
+}
+function habitFixedMins(h) {
+  if (habitPref(h) !== 'time' || !h.time) return null;
+  const [hh, mm] = h.time.split(':').map(Number);
+  return hh * 60 + mm;
+}
+function habitPrefStart(h) {
+  return HABIT_PREF_START[habitPref(h)] ?? HABIT_PREF_START.morning;
+}
+
 // ── HABITS MANAGER ──
 function renderHabits() {
   const el = document.getElementById('habitsMgr');
@@ -1696,9 +1721,14 @@ function openSheet(editId) {
     c.classList.toggle('sel', c.dataset.val === wantTarget));
   document.getElementById('sh-target-field').style.display = wantMode === 'freq' ? 'block' : 'none';
   document.getElementById('sh-days-field').style.display   = wantMode === 'freq' ? 'none'  : 'block';
-  const wantPref = h ? (h.pref || 'any') : 'any';
+  // new habits start with nothing picked — the user decides when it happens
+  const wantPref = h ? habitPref(h) : '';
   document.querySelectorAll('#sh-pref .sh-chip').forEach(c =>
     c.classList.toggle('sel', c.dataset.val === wantPref));
+  const wantTime = (h && wantPref === 'time' && h.time) || '';
+  document.getElementById('sh-time').value = wantTime;
+  document.getElementById('sh-time-display').textContent = wantTime ? fmtTime(wantTime) : 'Pick a time';
+  document.getElementById('sh-time-field').style.display = wantPref === 'time' ? 'block' : 'none';
   const defDays = ['Mon','Tue','Wed','Thu','Fri'];
   document.querySelectorAll('#sh-days .sh-day').forEach(dEl =>
     dEl.classList.toggle('sel', h ? (h.days||[]).includes(dEl.dataset.d) : defDays.includes(dEl.dataset.d)));
@@ -1730,6 +1760,7 @@ function pickShTarget(el) {
 function pickShPref(el) {
   document.querySelectorAll('#sh-pref .sh-chip').forEach(c => c.classList.remove('sel'));
   el.classList.add('sel');
+  document.getElementById('sh-time-field').style.display = el.dataset.val === 'time' ? 'block' : 'none';
 }
 function pickShCat(el) {
   document.querySelectorAll('#sh-cats .sh-chip').forEach(c => c.classList.remove('sel'));
@@ -1752,12 +1783,16 @@ function saveHabit() {
   }
   const dur = parseInt(document.getElementById('sh-dur').value) || 15;
   const note = document.getElementById('sh-note').value.trim();
-  const pref = document.querySelector('#sh-pref .sel')?.dataset.val || 'any';
+  const pref = document.querySelector('#sh-pref .sel')?.dataset.val || '';
+  if (!pref) { toast('Pick morning, afternoon, night or a specific time.'); return; }
+  const time = pref === 'time' ? document.getElementById('sh-time').value : '';
+  if (pref === 'time' && !time) { toast('Pick a time.'); return; }
   const editId = document.getElementById('sh-id').value;
   if (editId) {
     const hx = habits.find(x => x.id === editId);
     if (hx) {
       hx.name = name; hx.cat = cat; hx.dur = dur; hx.days = days; hx.note = note; hx.pref = pref; hx.mode = mode;
+      if (time) hx.time = time; else delete hx.time;
       // target only means anything in frequency mode — leaving it set after
       // switching to fixed-days is exactly the kind of stale-field residue
       // that made an earlier data bug (a habit's leftover target from a
@@ -1766,6 +1801,7 @@ function saveHabit() {
     }
   } else {
     const h = { id: Date.now() + '-' + Math.random().toString(36).slice(2), name, cat, dur, days, note, pref, mode };
+    if (time) h.time = time;
     if (mode === 'freq') h.target = target;
     habits.push(h);
   }
@@ -1810,8 +1846,6 @@ function renderPlan() {
   // Profile section
   h += '<div class="section-head">Profile</div>';
   h += '<div class="plan-item"><div class="plan-icon">' + svgIcon('user',18) + '</div><div class="plan-info"><div class="plan-name">' + (p.name||'—') + '</div><div class="plan-val">' + (p.goal||'—') + '</div></div></div>';
-  h += '<div class="plan-item"><div class="plan-icon">' + svgIcon('sun',18) + '</div><div class="plan-info"><div class="plan-name">Wake</div><div class="plan-val">' + (p.wake ? fmtTime(p.wake) : '—') + '</div></div></div>';
-  h += '<div class="plan-item"><div class="plan-icon">' + svgIcon('moon',18) + '</div><div class="plan-info"><div class="plan-name">Sleep</div><div class="plan-val">' + (p.sleep ? fmtTime(p.sleep) : '—') + '</div></div></div>';
   h += '<div class="plan-item"><div class="plan-icon">' + svgIcon('clock',18) + '</div><div class="plan-info"><div class="plan-name">Daily time</div><div class="plan-val">' + (p.time||30) + ' min</div></div></div>';
   if (p.focus && p.focus.length) {
     h += '<div class="plan-item"><div class="plan-icon">' + svgIcon('target',18) + '</div><div class="plan-info"><div class="plan-name">Focus</div><div class="plan-val">' + p.focus.join(', ') + '</div></div></div>';
@@ -1838,23 +1872,26 @@ function renderPlan() {
 function renderPlanActions() {
   const el = document.getElementById('planActions');
   if (!el) return;
-  let h = '<div class="section-head">Actions</div>';
-  h += '<div class="plan-btn-row">';
-  h += '<button class="plan-btn" onclick="editProfile()" style="color:var(--lime);border-color:var(--lime-border)">✎ Edit</button>';
-  h += '<button class="plan-btn" onclick="resetProfile()" style="color:var(--red);border-color:rgba(255,51,68,.3)">↺ Reset</button>';
+  // Account first: login is required, so Log out always has a clear home here.
+  let h = '<div class="section-head">Account</div>';
+  if (bios_session) {
+    const label = (bios_session.user && bios_session.user.email) ? bios_session.user.email : 'Logged in';
+    h += '<div style="padding:0 16px 8px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px;">' + svgIcon('cloud',12) + ' ' + label + '</div>';
+    h += '<div class="plan-btn-row">';
+    h += '<button class="plan-btn" id="planLogoutBtn" onclick="logOut()" style="color:var(--red);border-color:rgba(255,51,68,.3)">Log out</button>';
+  } else {
+    // only reachable via the offline fallback (login service unreachable)
+    h += '<div class="plan-btn-row">';
+    h += '<button class="plan-btn" onclick="showAuthScreen()" style="color:var(--lime);border-color:var(--lime-border)">' + svgIcon('cloud',12) + ' Log in</button>';
+  }
   h += '</div>';
+  h += '<div class="section-head">Data</div>';
   h += '<div class="plan-btn-row">';
   h += '<button class="plan-btn" onclick="backupData()" style="color:var(--text2)">⬇ Backup</button>';
   h += '<button class="plan-btn" onclick="triggerRestore()" style="color:var(--text2)">⬆ Restore</button>';
   h += '</div>';
   h += '<div class="plan-btn-row">';
-  if (bios_session) {
-    const label = (bios_session.user && bios_session.user.email) ? bios_session.user.email : 'Account';
-    h += '<button class="plan-btn" style="color:var(--text3)" disabled>' + svgIcon('cloud',12) + ' ' + label + '</button>';
-    h += '<button class="plan-btn" onclick="logOut()" style="color:var(--red);border-color:rgba(255,51,68,.3)">Log out</button>';
-  } else {
-    h += '<button class="plan-btn" onclick="showAuthScreen()" style="color:var(--lime);border-color:var(--lime-border)">' + svgIcon('cloud',12) + ' Log in to sync</button>';
-  }
+  h += '<button class="plan-btn" onclick="resetProfile()" style="color:var(--red);border-color:rgba(255,51,68,.3)">↺ Reset</button>';
   h += '</div>';
   el.innerHTML = h;
 }
@@ -2009,24 +2046,24 @@ function openWeeklyReview() {
   let snapHist;
   try { snapHist = JSON.parse(localStorage.getItem('bios_day_snapshot') || '{}'); } catch (e) { snapHist = {}; }
   const fmtH = m => { const h = m/60; return (h % 1 === 0 ? h : h.toFixed(1)) + 'h'; };
-  let overloadedCount = 0;
+  let weekBooked = 0;
   const loadRows = days.map(d => {
     const key = dateKey(d);
     const b = computeDayBudget(key);
-    if (b.overloaded) overloadedCount++;
+    weekBooked += b.planned;
     const snap = snapHist[key];
     const dn3 = d.toLocaleDateString('en-US',{weekday:'short'});
     const isToday = key === dateKey(today);
     let driftHTML = '<span style="color:var(--text4);">—</span>';
-    if (snap) {
-      const drift = b.capacity - snap.capacity; // negative = something ate into it
+    if (snap && typeof snap.planned === 'number') {
+      const drift = snap.planned - b.planned; // negative = something got added after the morning
       if (Math.abs(drift) < 15) driftHTML = '<span style="color:var(--text3);">on track</span>';
       else if (drift < 0) driftHTML = '<span style="color:var(--red);">-' + fmtH(-drift) + ' added</span>';
       else driftHTML = '<span style="color:var(--lime);">+' + fmtH(drift) + ' freed up</span>';
     }
     return `<div class="review-load-row">
       <div class="review-load-day">${dn3}${isToday ? ' <span style="color:var(--lime);">•</span>' : ''}</div>
-      <div class="review-load-free" style="color:${b.overloaded ? 'var(--red)' : 'var(--text)'};">${fmtH(b.capacity)} free${b.overloaded ? ' · over' : ''}</div>
+      <div class="review-load-free" style="color:var(--text);">${fmtH(b.planned)} booked</div>
       <div class="review-load-drift">${driftHTML}</div>
     </div>`;
   }).join('');
@@ -2037,7 +2074,7 @@ function openWeeklyReview() {
     <div class="review-stat"><div class="review-stat-val">${totalDone}/${totalSched}</div><div class="review-stat-label">Habits done</div></div>
     <div class="review-stat"><div class="review-stat-val">${bestStk}</div><div class="review-stat-label">Best streak</div></div>
     <div class="review-stat"><div class="review-stat-val">${(habits||[]).length}</div><div class="review-stat-label">Active habits</div></div>
-    <div class="review-stat"><div class="review-stat-val" style="color:${overloadedCount>0?'var(--red)':'var(--lime)'}">${overloadedCount}</div><div class="review-stat-label">Overloaded days</div></div>
+    <div class="review-stat"><div class="review-stat-val">${fmtH(weekBooked)}</div><div class="review-stat-label">Hours booked</div></div>
   `;
 
   // per-habit breakdown
@@ -2066,9 +2103,6 @@ function openWeeklyReview() {
   if (overallRate >= 80) note = `<strong>Strong week.</strong> ${overallRate}% completion is real consistency. Don't let up — this is where the habit becomes automatic.`;
   else if (overallRate >= 50) note = `<strong>Halfway there.</strong> ${overallRate}% means you're showing up more than not. Find the one habit that keeps missing and fix that first.`;
   else note = `<strong>Rough week.</strong> ${overallRate}% is honest data, not a verdict. Pick your two most important habits and commit to only those next week. Volume is not the problem — consistency is.`;
-  if (overloadedCount > 0) {
-    note += ` ${overloadedCount} of the last 7 days ran over budget — that's the schedule promising more than the day actually had room for, not a willpower problem.`;
-  }
   document.getElementById('reviewNote').innerHTML = note;
 
   document.getElementById('reviewOverlay').classList.add('open');
@@ -2319,16 +2353,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderTimeline() {
   const el = document.getElementById('todayTimeline');
   if (!el) return;
-  const p = profile || {};
-  const wake = p.wake || '07:00';
-  const sleep = p.sleep || '23:00';
   const now = new Date();
   const dn = dayName();
   const tlKey = 'bios_tl_' + dateKey(now);
+  // Bump when the timeline's build rules change so old cached days rebuild.
+  const TL_LAYOUT = 'clock-v2';
 
   // Parse time helpers
   function toMins(t) { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; }
-  const wakeMins = toMins(wake);
+  // Plain clock order, midnight to midnight — there's no wake time to wrap around.
+  const wakeMins = 0;
   function toAbsMins(t) {
     const m = toMins(t);
     if (m === null) return null;
@@ -2350,19 +2384,16 @@ function renderTimeline() {
   // Load or build blocks
   const tlMetaKey = 'bios_tl_meta_' + dateKey(now);
   let customBlocks = JSON.parse(localStorage.getItem(tlKey) || 'null');
-  if (customBlocks && localStorage.getItem(tlMetaKey) !== wake) {
-    customBlocks = null;
-  }
-  if (customBlocks && customBlocks.length <= 2 && (habits||[]).length > 0) {
+  const scheduledToday = (habits||[]).some(h => !isFreq(h) && (h.days||[]).includes(dn));
+  if (customBlocks && (localStorage.getItem(tlMetaKey) !== TL_LAYOUT
+      || (scheduledToday && !customBlocks.some(b => b.habitId)))) {
+    // rebuild, but keep the user's own added blocks
+    window._preservedTlBlocks = customBlocks.filter(b => b.id && String(b.id).startsWith('c_'));
     customBlocks = null;
   }
 
   if (!customBlocks) {
     customBlocks = [];
-    // Wake block
-    customBlocks.push({ id:'wake', time:wake, absMins:wakeMins, type:'routine', title:'Wake · water · no phone', detail:'15 min before anything else', key:false, fixed:true });
-    // Morning routine
-    customBlocks.push({ id:'morning', time:minsToTime(wakeMins+15), absMins:wakeMins+15, type:'mindfulness', title:'Morning routine', detail:'Journal, breathing, meditation', key:false, fixed:true });
 
     // Appointments as blocks. Real appointments carry an actual calendar
     // date, so their time is unambiguous — always literal minutes since
@@ -2407,21 +2438,25 @@ function renderTimeline() {
       }
       return (h.days||[]).includes(dn);
     });
-    const sleepAbsVal = toAbsMins(sleep);
-    const windStart = sleepAbsVal - 30;
-    const dayOpen = wakeMins + 45;
-    // preferred time-of-day windows (abs mins); undefined pref = anytime
-    function prefStart(p) {
-      if (p === 'morning')   return dayOpen;
-      if (p === 'afternoon') return Math.max(dayOpen, toAbsMins('12:00'));
-      if (p === 'evening')   return Math.max(dayOpen, toAbsMins('17:00'));
-      return dayOpen;
-    }
+    const habitBlock = (h, m) => ({
+      id:'h_'+h.id, time:minsToTime(m), absMins:m, type:h.cat,
+      title:h.name, detail:h.dur+' min'+(h.note?' · '+h.note:''),
+      key:h.cat==='fitness'||h.cat==='trading', fixed:false, habitId:h.id
+    });
+    // "Specific time" habits go exactly where the user put them, and the
+    // morning/afternoon/night ones flow around them like appointments.
+    const flexH = [];
+    todayH.forEach(h => {
+      const m = habitFixedMins(h);
+      if (m === null) { flexH.push(h); return; }
+      customBlocks.push(habitBlock(h, m));
+      busy.push({ start: m - BUF, end: m + h.dur + BUF });
+    });
     // place earlier windows first so one habit's window can't push another's
-    const ordered = todayH.slice().sort((a,b) => prefStart(a.pref) - prefStart(b.pref));
-    let cursor = dayOpen;
+    const ordered = flexH.slice().sort((a,b) => habitPrefStart(a) - habitPrefStart(b));
+    let cursor = 0;
     ordered.forEach(h => {
-      cursor = Math.max(cursor, prefStart(h.pref));
+      cursor = Math.max(cursor, habitPrefStart(h));
       let moved = true;
       while (moved) {
         moved = false;
@@ -2429,17 +2464,9 @@ function renderTimeline() {
           if (cursor < b.end && cursor + h.dur > b.start) { cursor = b.end; moved = true; }
         }
       }
-      const overflow = cursor + h.dur > windStart;
-      customBlocks.push({
-        id:'h_'+h.id, time:minsToTime(cursor), absMins:cursor, type:h.cat,
-        title:h.name, detail:h.dur+' min'+(h.note?' · '+h.note:'')+(overflow?' · ⚠ past wind-down':''),
-        key:h.cat==='fitness'||h.cat==='trading', fixed:false, habitId:h.id
-      });
+      customBlocks.push(habitBlock(h, cursor));
       cursor += h.dur + 15;
     });
-
-    // Wind-down
-    customBlocks.push({ id:'wind', time:minsToTime(windStart), absMins:windStart, type:'wind', title:'Screens off', detail:'Sleep '+fmtTime(sleep), key:false, fixed:true });
 
     // Re-attach preserved custom blocks
     if (window._preservedTlBlocks && window._preservedTlBlocks.length) {
@@ -2454,7 +2481,7 @@ function renderTimeline() {
 
     customBlocks.sort((a,b) => (a.absMins||0) - (b.absMins||0));
     localStorage.setItem(tlKey, JSON.stringify(customBlocks));
-    localStorage.setItem(tlMetaKey, wake);
+    localStorage.setItem(tlMetaKey, TL_LAYOUT);
   }
 
   // If a habit was checked off before its scheduled slot arrived, move its
@@ -2606,7 +2633,7 @@ function saveTlBlock() {
   const block = { id: 'c_'+Date.now(), time, type, title, detail, key:false, fixed:false };
   if (deadlineId) block.deadlineId = deadlineId;
   blocks.push(block);
-  const _wm = (() => { const [h,m] = ((profile&&profile.wake)||'07:00').split(':').map(Number); return h*60+m; })();
+  const _wm = 0; // plain clock order — no wake time to wrap around
   const _abs = t => { if(!t) return 0; const [h,m] = t.split(':').map(Number); const v = h*60+m; return v < _wm ? v+1440 : v; };
   blocks.sort((a,b) => _abs(a.time) - _abs(b.time));
   localStorage.setItem(tlKey, JSON.stringify(blocks));
@@ -2633,7 +2660,7 @@ function saveTlEdit() {
     detail: document.getElementById('tl-edit-detail').value.trim(),
     type: document.querySelector('#tl-edit-cats .sh-chip.sel')?.dataset.val || blocks[idx].type,
   };
-  const _wm = (() => { const [h,m] = ((profile&&profile.wake)||'07:00').split(':').map(Number); return h*60+m; })();
+  const _wm = 0; // plain clock order — no wake time to wrap around
   const _abs = t => { if(!t) return 0; const [h,m] = t.split(':').map(Number); const v = h*60+m; return v < _wm ? v+1440 : v; };
   blocks.sort((a,b) => _abs(a.time) - _abs(b.time));
   localStorage.setItem(tlKey, JSON.stringify(blocks));
@@ -3005,6 +3032,7 @@ function openRecTimePicker(targetId, triggerEl) {
     'appt-time':'Start time','appt-end':'End time',
     'edit-appt-time':'Start time','edit-appt-end':'End time',
     'tl-add-time':'Block time','tl-edit-time':'Block time',
+    'sh-time':'Habit time',
   };
   document.getElementById('timePickerTitle').textContent = titles[targetId] || 'Set time';
   document.getElementById('timePickerTarget').value = targetId;
@@ -3194,19 +3222,7 @@ function calHabitsOn(dateStr) {
   });
   if (!dayHabits.length) return [];
 
-  const wakeM = calToMin(profile.wake || '07:00');
-  let sleepM = calToMin(profile.sleep || '23:00');
-  if (sleepM <= wakeM) sleepM += 1440;
-  const dayOpen = wakeM + 45;
-  const windStart = sleepM - 30;
-
   const busy = calApptsOn(dateStr).map(a => ({ start: a._start - 10, end: a._end + 10 })).sort((x,y) => x.start - y.start);
-  function prefStart(p) {
-    if (p === 'morning')   return dayOpen;
-    if (p === 'afternoon') return Math.max(dayOpen, 12*60);
-    if (p === 'evening')   return Math.max(dayOpen, 17*60);
-    return dayOpen;
-  }
 
   const out = [];
   const toPlace = [];
@@ -3233,17 +3249,24 @@ function calHabitsOn(dateStr) {
       const mins = calToMin(retimes[h.id]);
       if (mins !== null) {
         out.push({ id: 'h_' + h.id, habitId: h.id, title: h.name, cat: h.cat, note: '', date: dateStr,
-          _start: mins, _end: mins + h.dur, isHabit: true, retimed: true, overflow: mins + h.dur > windStart });
+          _start: mins, _end: mins + h.dur, isHabit: true, retimed: true, overflow: false });
         return;
       }
+    }
+    const fixedM = habitFixedMins(h);
+    if (fixedM !== null) {
+      out.push({ id: 'h_' + h.id, habitId: h.id, title: h.name, cat: h.cat, note: '', date: dateStr,
+        _start: fixedM, _end: fixedM + h.dur, isHabit: true, overflow: false });
+      busy.push({ start: fixedM - 10, end: fixedM + h.dur + 10 });
+      return;
     }
     toPlace.push(h);
   });
 
-  const ordered = toPlace.slice().sort((a,b) => prefStart(a.pref) - prefStart(b.pref));
-  let cursor = dayOpen;
+  const ordered = toPlace.slice().sort((a,b) => habitPrefStart(a) - habitPrefStart(b));
+  let cursor = 0;
   ordered.forEach(h => {
-    cursor = Math.max(cursor, prefStart(h.pref));
+    cursor = Math.max(cursor, habitPrefStart(h));
     let moved = true;
     while (moved) {
       moved = false;
@@ -3252,7 +3275,7 @@ function calHabitsOn(dateStr) {
       }
     }
     out.push({ id: 'h_' + h.id, habitId: h.id, title: h.name, cat: h.cat, note: '', date: dateStr,
-      _start: cursor, _end: cursor + h.dur, isHabit: true, overflow: cursor + h.dur > windStart });
+      _start: cursor, _end: cursor + h.dur, isHabit: true, overflow: false });
     cursor += h.dur + 15;
   });
   return out.sort((a,b) => a._start - b._start);
@@ -4132,15 +4155,14 @@ function bestStreak() {
 // implementations of this formula is exactly the class of bug the color-map
 // duplication was — one source of truth here too.
 function computeDayBudget(dateStr) {
-  if (!profile) return { capacity: 0, planned: 0, overloaded: false };
+  // Booked time only: there's no wake/sleep window, so no "free" or
+  // "overloaded" figure — just how much of the day is already spoken for.
+  if (!profile) return { planned: 0, apptMins: 0, habitMins: 0 };
   const toM = t => { const [h,m] = (t||'0:0').split(':').map(Number); return h*60+m; };
-  const wakeM = toM(profile.wake || '07:00');
-  const abs = t => { const v = toM(t); return v < wakeM ? v + 1440 : v; };
-  const windStart = abs(profile.sleep || '23:00') - 30;
-  const dayStart = wakeM + 45;
   const ivs = (appts||[]).filter(a => a.date === dateStr).map(a => {
-    const s = abs(a.time); let e = a.end ? abs(a.end) : s + 60; if (e <= s) e = s + 60;
-    return [Math.max(s, dayStart), Math.min(e, windStart)];
+    const s = toM(a.time); let e = a.end ? toM(a.end) : s + 60;
+    if (e <= s) e = a.end ? 1440 : s + 60; // overnight end: count to midnight on this day
+    return [s, Math.min(e, 1440)];
   }).filter(iv => iv[1] > iv[0]).sort((a,b) => a[0] - b[0]);
   let busyMins = 0, cs = null, ce = null;
   ivs.forEach(iv => {
@@ -4148,14 +4170,11 @@ function computeDayBudget(dateStr) {
     else if (iv[1] > ce) ce = iv[1];
   });
   if (ce !== null) busyMins += ce - cs;
-  const OVERHEAD_MIN = 150;
   const dn = dayName(calParse(dateStr));
   const habitMins = (habits||[])
     .filter(h => isFreq(h) ? true : (h.days||[]).includes(dn))
     .reduce((a,h) => a + (h.dur || 0), 0);
-  const planned = busyMins + habitMins;
-  const rawFree = windStart - dayStart - OVERHEAD_MIN - planned;
-  return { capacity: Math.max(0, rawFree), planned, overloaded: rawFree < 0, apptMins: busyMins, habitMins, overheadMins: OVERHEAD_MIN };
+  return { planned: busyMins + habitMins, apptMins: busyMins, habitMins };
 }
 
 // First-open-of-the-day snapshot of the budget — the closest honest proxy
@@ -4169,7 +4188,7 @@ function snapshotDayBudgetIfMissing(dateStr) {
   try { hist = JSON.parse(localStorage.getItem('bios_day_snapshot') || '{}'); } catch (e) { hist = {}; }
   if (hist[dateStr]) return;
   const b = computeDayBudget(dateStr);
-  hist[dateStr] = { capacity: b.capacity, planned: b.planned, overloaded: b.overloaded, snappedAt: Date.now() };
+  hist[dateStr] = { planned: b.planned, snappedAt: Date.now() };
   // prune anything older than ~60 days so this doesn't grow unbounded
   const cutoff = Date.now() - 60 * 86400000;
   Object.keys(hist).forEach(k => { if (hist[k].snappedAt < cutoff) delete hist[k]; });
@@ -4180,33 +4199,26 @@ function renderTimeBudget() {
   const el = document.getElementById('timeBudgetCard');
   if (!el || !profile) return;
   const tk = dateKey(new Date());
-  const { capacity, apptMins, habitMins, overheadMins, overloaded: over } = computeDayBudget(tk);
+  const { planned, apptMins, habitMins } = computeDayBudget(tk);
   snapshotDayBudgetIfMissing(tk);
-  window._todayCapacityMin = capacity;
 
-  const total = apptMins + habitMins + overheadMins + capacity;
   const fmtH = m => { const h = m/60; return (h % 1 === 0 ? h : h.toFixed(1)) + 'h'; };
-  const pct = m => total > 0 ? (m/total*100) : 0;
-
-  const segs = [
-    { m: apptMins, c: '#ffcc00' },
-    { m: habitMins, c: '#c6ff4e' },
-    { m: overheadMins, c: '#2a3038' },
-  ].filter(s => s.m > 0).map(s => `<div style="width:${pct(s.m)}%;background:${s.c};"></div>`).join('')
-    + `<div style="flex:1;background:${over ? 'var(--red)' : 'var(--lime)'};"></div>`;
-
-  const legend = [
+  const pct = m => planned > 0 ? (m/planned*100) : 0;
+  const parts = [
     { m: apptMins, c: '#ffcc00', label: 'Appointments' },
     { m: habitMins, c: '#c6ff4e', label: 'Habits' },
-    { m: overheadMins, c: '#2a3038', label: 'Overhead' },
-  ].filter(s => s.m > 0).map(s => `<div class="budget-hero-legend-item"><div class="budget-hero-legend-dot" style="background:${s.c};"></div><div class="budget-hero-legend-label">${s.label} ${fmtH(s.m)}</div></div>`).join('');
+  ].filter(s => s.m > 0);
+  const segs = parts.length
+    ? parts.map(s => `<div style="width:${pct(s.m)}%;background:${s.c};"></div>`).join('')
+    : '<div style="flex:1;background:var(--g-dark);"></div>';
+  const legend = parts.map(s => `<div class="budget-hero-legend-item"><div class="budget-hero-legend-dot" style="background:${s.c};"></div><div class="budget-hero-legend-label">${s.label} ${fmtH(s.m)}</div></div>`).join('');
 
   el.innerHTML = `<div class="budget-hero">
-    <div class="budget-hero-label">Free today</div>
+    <div class="budget-hero-label">Booked today</div>
     <div class="budget-hero-num-row">
-      <div class="budget-hero-num" style="color:${over ? 'var(--red)' : 'var(--lime)'};">${(capacity/60 % 1 === 0) ? capacity/60 : (capacity/60).toFixed(1)}</div>
-      <div class="budget-hero-unit" style="color:${over ? 'var(--red)' : 'var(--lime)'};">h</div>
-      <div class="budget-hero-sub">after meals<br>&amp; transit</div>
+      <div class="budget-hero-num" style="color:var(--lime);">${(planned/60 % 1 === 0) ? planned/60 : (planned/60).toFixed(1)}</div>
+      <div class="budget-hero-unit" style="color:var(--lime);">h</div>
+      <div class="budget-hero-sub">appointments<br>&amp; habits</div>
     </div>
     <div class="budget-hero-bar">${segs}</div>
     <div class="budget-hero-legend">${legend}</div>
@@ -4230,10 +4242,7 @@ function renderDeadlineNudge() {
   else if (diff === 0) when = 'due today';
   else if (diff === 1) when = 'due tomorrow';
   else                 when = 'due in ' + diff + 'd';
-  const free = window._todayCapacityMin;
-  const freeTxt = (typeof free === 'number')
-    ? ((free/60) % 1 === 0 ? (free/60) : (free/60).toFixed(1)) + 'h free today'
-    : '';
+  const freeTxt = '';
   const urgent = diff <= 1;
   const col = urgent ? '#ff3344' : '#ffcc00';
   el.style.display = 'flex';
