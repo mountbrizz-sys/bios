@@ -16,7 +16,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Ping Supabase
         run: |
           URL=$(grep -o "https://[a-z0-9]*\.supabase\.co" config.js | head -1)
