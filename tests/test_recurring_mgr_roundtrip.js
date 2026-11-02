@@ -39,7 +39,6 @@ const dom = new JSDOM(html, {
   runScripts: 'dangerously', pretendToBeVisual: true, url: 'https://example.com/', virtualConsole,
   beforeParse(win) {
     win.Date = FixedDate;
-    win.Element.prototype.scrollTo = () => {}; // jsdom doesn't implement it; editProfile() calls it
     win.localStorage.setItem('bios_profile', JSON.stringify(seedProfile));
     win.localStorage.setItem('bios_habits', JSON.stringify([]));
     win.localStorage.setItem('bios_version', '3');
@@ -84,11 +83,6 @@ window.Date = FixedDate;
     rec = savedRecurring();
     check('BUG FIX: ✕ in Manage removes that activity', rec.length === 1 && rec[0].title === 'Shift');
 
-    // Profile-edit path keeps the icon when it rebuilds rows.
-    window.editProfile();
-    const row = window.eval('recurringRows')[0];
-    check('BUG FIX: editing profile keeps the activity icon', row && row.icon === 'dumbbell');
-    check('editing profile keeps per-day times', row && row.perday && JSON.stringify(row.dayTimes) === JSON.stringify(shift.dayTimes));
 
     check('no console/runtime errors were captured during the run', consoleErrors.length === 0);
     if (consoleErrors.length) console.log('Captured errors:', consoleErrors);

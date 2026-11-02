@@ -54,10 +54,7 @@ window.Date = FixedDate;
     const doc = window.document;
 
     // ── EMOJI REMOVAL: static chips/cards render SVG, not emoji text ──
-    const focusCards = doc.getElementById('focusCards');
-    check('onboarding focus cards exist', !!focusCards);
-    check('focus cards contain SVG icons', focusCards.querySelectorAll('svg').length === 8);
-    check('focus cards have no emoji characters left', !/[\u{1F300}-\u{1FAFF}]/u.test(focusCards.innerHTML));
+    // (onboarding focus cards were removed along with onboarding)
 
     const shCats = doc.getElementById('sh-cats');
     check('habit category chips contain SVG icons', shCats.querySelectorAll('svg').length === 8);

@@ -474,72 +474,13 @@
     margin-top: 8px;
   }
 
-  /* ── ONBOARDING ── */
-  #screen-onboard {
-    position: fixed; inset: 0; background: var(--bg);
-    z-index: 300; overflow-y: auto; display: none;
-  }
-  #screen-onboard.active { display: block; }
-  .onboard-page { display: none; padding: 60px 24px 100px; }
-  .onboard-page.active { display: block; }
-  .ob-step {
-    font-size: 11px; font-weight: 700; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--text4); margin-bottom: 16px;
-  }
-  .ob-step span { color: var(--lime); }
-  .ob-display {
-    font-size: 28px; font-weight: 800; line-height: 1.15;
-    letter-spacing: -.02em; margin-bottom: 10px;
-  }
-  .ob-display em { color: var(--lime); font-style: normal; }
-  .ob-sub {
-    font-size: 14px; color: var(--text3); line-height: 1.5;
-    margin-bottom: 24px;
-  }
-  .ob-next {
-    width: 100%; padding: 16px; border-radius: var(--r);
-    background: var(--lime); border: none;
-    color: var(--bg); font-family: var(--font);
-    font-size: 15px; font-weight: 800; cursor: pointer;
-    margin-top: 12px;
-  }
+  /* sheet secondary button (Cancel / Close) */
   .ob-back {
     width: 100%; padding: 14px; border-radius: var(--r);
     background: transparent; border: 1px solid var(--border);
     color: var(--text3); font-family: var(--font);
     font-size: 13px; font-weight: 600; cursor: pointer;
     margin-top: 8px;
-  }
-  .ob-chip {
-    padding: 10px 18px; border-radius: var(--r);
-    background: var(--bg2); border: 1px solid var(--border);
-    color: var(--text3); font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all .12s;
-  }
-  .ob-chip.selected { background: var(--lime); color: var(--bg); border-color: var(--lime); }
-  .ob-card {
-    padding: 16px; border-radius: var(--r-lg);
-    background: var(--bg2); border: 1px solid var(--border);
-    cursor: pointer; transition: all .12s; text-align: center;
-  }
-  .ob-card.selected { border-color: var(--lime); background: rgba(184,255,46,.06); }
-  .ob-card.selected .ob-card-name { color: var(--lime); }
-  .ob-card-icon { font-size: 24px; margin-bottom: 6px; }
-  .ob-card-name { font-size: 13px; font-weight: 700; color: var(--text); }
-  .ob-time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .ob-time-block {
-    padding: 16px; border-radius: var(--r-lg);
-    background: var(--bg2); border: 1px solid var(--border);
-    text-align: center;
-  }
-  .ob-time-label {
-    font-size: 9.5px; font-weight: 700; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--text4); margin-bottom: 6px;
-  }
-  .ob-time-input {
-    background: transparent; border: none; color: var(--text);
-    font-family: var(--font); font-size: 24px; font-weight: 800;
-    text-align: center; width: 100%; outline: none;
   }
 
   /* ── TOAST ── */
@@ -598,22 +539,6 @@
   .splash-btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text2);font-weight:600;font-size:14px;}
 
   /* ── ONBOARDING FIELDS ── */
-  .ob-field{margin-bottom:18px;}
-  .ob-label{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text4);margin-bottom:8px;display:block;}
-  .ob-input{width:100%;padding:14px 16px;border-radius:var(--r);background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:15px;outline:none;}
-  .ob-input:focus{border-color:var(--lime-border);}
-  .ob-chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .ob-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .ob-card-title{font-size:13px;font-weight:700;color:var(--text);}
-  .ob-card.selected .ob-card-title{color:var(--lime);}
-  .ob-card-sub{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.4;}
-  .ob-time-display{font-size:24px;font-weight:800;color:var(--text);display:flex;align-items:baseline;justify-content:center;gap:4px;}
-  .ob-slider-wrap{padding:4px 0;}
-  .ob-slider{width:100%;height:4px;border-radius:2px;background:var(--border);appearance:none;outline:none;}
-  .ob-slider::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--lime);cursor:pointer;}
-  .ob-slider::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--lime);cursor:pointer;}
-  .ob-slider-val{font-size:22px;font-weight:800;color:var(--lime);text-align:center;margin-bottom:10px;letter-spacing:-.02em;}
-  .ob-slider-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text4);margin-top:6px;font-weight:600;}
 
   /* ── MODAL (confirm) ── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:250;display:none;align-items:flex-end;justify-content:center;}
@@ -753,6 +678,7 @@
       <span id="authSwitchLink" onclick="showAuthMode('signup')" style="color:var(--lime);cursor:pointer;font-weight:600;">Sign up</span>
     </div>
 
+    <button class="splash-btn ghost" id="authOfflineBtn" onclick="enterOffline()" style="display:none;">Open this device's data (offline)</button>
     <button class="splash-btn ghost" onclick="triggerRestore()" style="margin-top:8px;">Restore from an old backup file</button>
   </div>
 </div>
@@ -786,150 +712,6 @@
   </div>
   <div style="width:100%;max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
     <button class="splash-btn" onclick="retrySyncCheck()">Try again</button>
-  </div>
-</div>
-
-<!-- ONBOARDING -->
-<div id="screen-onboard" class="screen">
-  <div class="onboard-page active" id="ob1">
-    <div class="ob-step"><span>1</span> / 7</div>
-    <div class="ob-display">What should<br>we call <em>you?</em></div>
-    <div class="ob-sub">This is your space. Your system. Your rules.</div>
-    <div class="ob-field">
-      <label class="ob-label">Your name</label>
-      <input class="ob-input" id="ob-name" type="text" placeholder="First name" autocomplete="given-name">
-    </div>
-    <button class="ob-next" onclick="ob_next(1)">Continue →</button>
-    <button class="ob-back" onclick="cancelEditProfile()">Cancel</button>
-  </div>
-
-  <div class="onboard-page" id="ob2">
-    <div class="ob-step"><span>2</span> / 7</div>
-    <div class="ob-display">How does your<br><em>week work?</em></div>
-    <div class="ob-sub">Be honest. Optimistic schedules always fail.</div>
-    <div class="ob-field">
-      <label class="ob-label">Work schedule</label>
-      <div class="ob-chips" id="schedChips">
-        <div class="ob-chip" onclick="pickChip(this,'sched')">9–5 fixed</div>
-        <div class="ob-chip" onclick="pickChip(this,'sched')">Shift work</div>
-        <div class="ob-chip" onclick="pickChip(this,'sched')">Freelance</div>
-        <div class="ob-chip" onclick="pickChip(this,'sched')">Self-employed</div>
-        <div class="ob-chip" onclick="pickChip(this,'sched')">Student</div>
-        <div class="ob-chip" onclick="pickChip(this,'sched')">Unemployed</div>
-      </div>
-    </div>
-    <div class="ob-field">
-      <label class="ob-label">Work days per week</label>
-      <div class="ob-chips" id="wdayChips">
-        <div class="ob-chip" onclick="pickChip(this,'wday')">1–2</div>
-        <div class="ob-chip" onclick="pickChip(this,'wday')">3–4</div>
-        <div class="ob-chip" onclick="pickChip(this,'wday')">5</div>
-        <div class="ob-chip" onclick="pickChip(this,'wday')">6–7</div>
-      </div>
-    </div>
-    <div class="ob-field">
-      <label class="ob-label">Wake / Sleep</label>
-      <div class="ob-time-row">
-        <div class="ob-time-block" onclick="openTimePicker('ob-wake')" style="cursor:pointer;">
-          <div class="ob-time-label">Wake up</div>
-          <div class="ob-time-display" id="ob-wake-display" style="font-family:var(--display);font-size:24px;font-weight:700;color:var(--text);display:flex;align-items:baseline;gap:4px;">
-            <span id="ob-wake-hm">7:00</span><span style="font-size:13px;color:var(--text3);">AM</span>
-          </div>
-          <input type="hidden" id="ob-wake" value="07:00">
-        </div>
-        <div class="ob-time-block" onclick="openTimePicker('ob-sleep')" style="cursor:pointer;">
-          <div class="ob-time-label">Sleep</div>
-          <div class="ob-time-display" id="ob-sleep-display" style="font-family:var(--display);font-size:24px;font-weight:700;color:var(--text);display:flex;align-items:baseline;gap:4px;">
-            <span id="ob-sleep-hm">11:00</span><span style="font-size:13px;color:var(--text3);">PM</span>
-          </div>
-          <input type="hidden" id="ob-sleep" value="23:00">
-        </div>
-      </div>
-    </div>
-    <button class="ob-next" onclick="ob_next(2)">Continue →</button>
-    <button class="ob-back" onclick="ob_back(2)">← Back</button>
-  </div>
-
-  <div class="onboard-page" id="ob3">
-    <div class="ob-step"><span>3</span> / 7</div>
-    <div class="ob-display">Which areas of<br>life do you want<br>to <em>build?</em></div>
-    <div class="ob-sub">Pick what genuinely matters. Not what sounds good.</div>
-    <div class="ob-cards" id="focusCards">
-      <div class="ob-card" onclick="pickCard(this)" data-val="fitness"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><rect x="6" y="10.5" width="2" height="3" rx=".5"/><rect x="16" y="10.5" width="2" height="3" rx=".5"/></svg></div><div class="ob-card-title">Fitness</div><div class="ob-card-sub">Gym, training, movement</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="nutrition"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13a3 3 0 0 1 0 6h-1"/><path d="M4 8v7a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V8"/><line x1="7" y1="3" x2="7" y2="5"/><line x1="10" y1="2" x2="10" y2="5"/></svg></div><div class="ob-card-title">Nutrition</div><div class="ob-card-sub">Diet, macros, hydration</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="trading"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg></div><div class="ob-card-title">Trading / Work</div><div class="ob-card-sub">Performance, discipline</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="mindfulness"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6" fill="currentColor"/></svg></div><div class="ob-card-title">Mindfulness</div><div class="ob-card-sub">Meditation, journaling</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="learning"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21z"/><line x1="20" y1="18.5" x2="6.5" y2="18.5"/></svg></div><div class="ob-card-title">Learning</div><div class="ob-card-sub">Study, skills, reading</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="sleep"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5z"/></svg></div><div class="ob-card-title">Sleep</div><div class="ob-card-sub">Recovery, consistency</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="social"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14c2.5.3 4.5 2 4.5 5"/></svg></div><div class="ob-card-title">Social</div><div class="ob-card-sub">Relationships, people</div></div>
-      <div class="ob-card" onclick="pickCard(this)" data-val="finance"><div class="ob-card-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 6.5c0-1.9-2.2-3.5-5-3.5s-5 1.6-5 3.5S9.2 10 12 10s5 1.6 5 3.5-2.2 3.5-5 3.5-5-1.6-5-3.5"/></svg></div><div class="ob-card-title">Finance</div><div class="ob-card-sub">Budgeting, saving</div></div>
-    </div>
-    <button class="ob-next" onclick="ob_next(3)" style="margin-top:20px;">Continue →</button>
-    <button class="ob-back" onclick="ob_back(3)">← Back</button>
-  </div>
-
-  <div class="onboard-page" id="ob4">
-    <div class="ob-step"><span>4</span> / 7</div>
-    <div class="ob-display">What's your<br><em>#1 goal</em> in<br>90 days?</div>
-    <div class="ob-sub">Be specific. "Get healthy" is not a goal.</div>
-    <div class="ob-field">
-      <label class="ob-label">Your 90-day goal</label>
-      <input class="ob-input" id="ob-goal" type="text" placeholder="e.g. Gym 4x/week, gain 5lbs muscle">
-    </div>
-    <div class="ob-field">
-      <label class="ob-label">Daily time you can commit</label>
-      <div class="ob-slider-wrap">
-        <div class="ob-slider-val" id="sliderVal">30 min</div>
-        <input class="ob-slider" type="range" id="ob-time" min="10" max="180" step="10" value="30" oninput="document.getElementById('sliderVal').textContent=this.value+' min'">
-        <div class="ob-slider-labels"><span>10 min</span><span>3 hrs</span></div>
-      </div>
-    </div>
-    <button class="ob-next" onclick="ob_next(4)">Continue →</button>
-    <button class="ob-back" onclick="ob_back(4)">← Back</button>
-  </div>
-
-  <div class="onboard-page" id="ob5">
-    <div class="ob-step"><span>5</span> / 7</div>
-    <div class="ob-display">What's<br><em>killed your<br>streaks</em> before?</div>
-    <div class="ob-sub">This isn't about shame. It's about building around your real weaknesses.</div>
-    <div class="ob-chips" id="failChips" style="gap:8px;">
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">Too ambitious</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">No reminders</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">No accountability</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">Got too busy</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">Lost motivation</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">Wrong habits</div>
-      <div class="ob-chip" onclick="pickChip(this,'fail',true)">Never tracked before</div>
-    </div>
-    <button class="ob-next" onclick="ob_next(5)" style="margin-top:32px;">Continue →</button>
-    <button class="ob-back" onclick="ob_back(5)">← Back</button>
-  </div>
-
-
-  <!-- Step 6: Recurring activities -->
-  <div class="onboard-page" id="ob6">
-    <div class="ob-step"><span>6</span> / 7</div>
-    <div class="ob-display">Any <em>recurring</em><br>activities?</div>
-    <div class="ob-sub">Work shifts, classes, appointments — anything that happens regularly. Bios will add them to your schedule automatically.</div>
-
-    <div id="recurringList" style="margin-bottom:16px;"></div>
-
-    <button onclick="addRecurringRow()" style="width:100%;padding:14px;border-radius:var(--r);background:var(--g-dark);border:1px dashed var(--border2);color:var(--lime);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;box-shadow:var(--sh-sm);margin-bottom:8px;">+ Add activity</button>
-
-    <button class="ob-next" onclick="ob_next(6)" style="margin-top:16px;">Continue →</button>
-    <button class="ob-back" onclick="ob_back(6)">← Back</button>
-  </div>
-
-  <div class="onboard-page" id="ob7">
-    <div class="ob-step"><span>7</span> / 7</div>
-    <div class="ob-display">Looks<br><em>good?</em></div>
-    <div class="ob-sub" id="ob-summary" style="background:var(--s2);border-radius:16px;padding:20px;font-size:14px;line-height:1.8;"></div>
-    <div style="margin-top:24px;background:rgba(198,255,78,0.06);border:1px solid rgba(198,255,78,0.2);border-radius:16px;padding:18px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--lime);margin-bottom:8px;">One rule</div>
-      <div style="font-size:14px;color:var(--text2);line-height:1.7;">Open Bios every day. Check off habits. Even if you only do one. The streak is the system — everything else follows from that.</div>
-    </div>
-    <button class="ob-next" onclick="finishOnboard()" style="margin-top:32px;">Save changes</button>
-    <button class="ob-back" onclick="ob_back(7)">← Back</button>
   </div>
 </div>
 
@@ -1363,59 +1145,8 @@ function showSplash(notice) {
 // a restore reloads the page; the session check below takes it from there
 localStorage.removeItem('bios_just_restored');
 function loadExisting() {
-  if (profile && habits) { hideSplash(); document.getElementById('screen-onboard').style.display='none'; showApp(); checkWeeklyReview(); }
+  if (profile && habits) { hideSplash(); showApp(); checkWeeklyReview(); }
   else toast('No profile here — restore a backup or start fresh.');
-}
-
-const ob = { sched:'', wday:'', focus:[], fail:[], recurring:[], name:'', wake:'07:00', sleep:'23:00', goal:'', time:30 };
-
-function pickChip(el, key, multi=false) {
-  if (multi) { el.classList.toggle('selected'); }
-  else {
-    el.closest('.ob-chips').querySelectorAll('.ob-chip').forEach(c => c.classList.remove('selected'));
-    el.classList.add('selected');
-  }
-}
-function pickCard(el) { el.classList.toggle('selected'); }
-
-function ob_next(step) {
-  if (step===1) {
-    ob.name = document.getElementById('ob-name').value.trim();
-  }
-  if (step===2) {
-    ob.sched = document.querySelector('#schedChips .selected')?.textContent || 'Flexible';
-    ob.wday  = document.querySelector('#wdayChips .selected')?.textContent || '3–4';
-    ob.wake  = document.getElementById('ob-wake').value;
-    ob.sleep = document.getElementById('ob-sleep').value;
-  }
-  if (step===3) {
-    ob.focus = [...document.querySelectorAll('#focusCards .selected')].map(c => c.dataset.val);
-  }
-  if (step===4) {
-    ob.goal = document.getElementById('ob-goal').value.trim();
-    ob.time = parseInt(document.getElementById('ob-time').value);
-  }
-  if (step===5) {
-    ob.fail = [...document.querySelectorAll('#failChips .selected')].map(c => c.textContent);
-  }
-  if (step===6) {
-    ob.recurring = collectRecurring();
-    buildSummary();
-  }
-  document.getElementById('ob'+step).classList.remove('active');
-  document.getElementById('ob'+(step+1)).classList.add('active');
-  document.getElementById('screen-onboard').scrollTo(0, 0);
-  // Init recurring list when arriving at step 6
-  if (step + 1 === 6) initRecurringStep();
-}
-function ob_back(step) {
-  document.getElementById('ob'+step).classList.remove('active');
-  document.getElementById('ob'+(step-1)).classList.add('active');
-  document.getElementById('screen-onboard').scrollTo(0, 0);
-}
-function buildSummary() {
-  const recCount = (ob.recurring||[]).length;
-  document.getElementById('ob-summary').innerHTML = `<strong style="color:var(--lime)">${ob.name}</strong> · ${ob.sched} · ${ob.wday} days/wk<br>Wake ${ob.wake ? fmtTime(ob.wake) : ""} · Sleep ${ob.sleep ? fmtTime(ob.sleep) : ""}<br>Focus: ${ob.focus.join(', ')}<br>Goal: <em>${ob.goal}</em><br>Daily time: ${ob.time} min${recCount?`<br>Recurring: ${recCount} activit${recCount===1?'y':'ies'}`:''}`; 
 }
 
 // A logged-in account with no data yet starts here: defaults only, no
@@ -1434,36 +1165,9 @@ function isBlankProfile() {
     && !Object.keys(checks || {}).length;
 }
 
-// Saves the profile editor (the old onboarding screens). Habits are the
-// user's own — editing the profile must never regenerate or replace them.
-function finishOnboard() {
-  const prev = profile || {};
-  profile = { ...prev, ...ob, created: prev.created || Date.now() };
-  delete profile.blank;
-  habits = habits || [];
-
-  // Recurring appointments are derived data — clear and let the single
-  // generator rebuild them so per-day times are always honoured.
-  appts = (appts || []).filter(a => a.note !== 'Recurring');
-  saveAppts();
-  topUpRecurring();
-  save();
-  invalidateTimeline();
-  const ob_el = document.getElementById('screen-onboard');
-  ob_el.classList.remove('active');
-  ob_el.style.display = 'none';
-  showApp();
-  toast('Profile saved ✓');
-}
-function cancelEditProfile() {
-  const ob_el = document.getElementById('screen-onboard');
-  ob_el.classList.remove('active');
-  ob_el.style.display = 'none';
-  showApp();
-}
 // ── APP INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Bios build] habit-multi-times-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
+  console.log('[Bios build] offline-cleanup-2026-11-02'); // bump this string every deploy so we can confirm which build is actually live
   const client = initSupabase();
   if (!client) {
     // Login service unreachable (offline, SDK failed to load, or config.js
@@ -1488,6 +1192,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bios_session) {
       if (profile && habits) loadExisting();
       else await onAuthSuccess(bios_session); // logged in on a fresh device — pull the account's data
+    } else if (profile && habits && !(await isCloudReachable())) {
+      // Logged out and Supabase is down (paused project, outage, no
+      // signal): don't lock the user out of data already on this device.
+      enterOffline();
     } else {
       showSplash();
     }
@@ -2023,79 +1731,6 @@ function renderPlanActions() {
   el.innerHTML = h;
 }
 
-
-function editProfile() {
-  document.getElementById('app').style.display = 'none';
-  const ob_screen = document.getElementById('screen-onboard');
-  ob_screen.style.display = '';
-  ob_screen.classList.add('active');
-
-  const p = profile || {};
-
-  // ── Pre-fill ob object from profile ──
-  ob.name  = p.name  || '';
-  ob.wake  = p.wake  || '07:00';
-  ob.sleep = p.sleep || '23:00';
-  ob.goal  = p.goal  || '';
-  ob.time  = p.time  || 30;
-  ob.sched = p.sched || '';
-  ob.wday  = p.wday  || '';
-  ob.focus = p.focus ? [...p.focus] : [];
-  ob.fail  = p.fail  ? [...p.fail]  : [];
-  ob.recurring = p.recurring ? [...p.recurring] : [];
-
-  // ── Pre-fill HTML fields ──
-  document.getElementById('ob-name').value = ob.name;
-  document.getElementById('ob-wake').value = ob.wake;
-  document.getElementById('ob-sleep').value = ob.sleep;
-  document.getElementById('ob-goal').value = ob.goal;
-  document.getElementById('ob-time').value = ob.time;
-  document.getElementById('sliderVal').textContent = ob.time + ' min';
-
-  // Update wake/sleep display spans
-  const wakeFormatted = fmtTime(ob.wake);
-  const sleepFormatted = fmtTime(ob.sleep);
-  const wakeHm = document.getElementById('ob-wake-hm');
-  const sleepHm = document.getElementById('ob-sleep-hm');
-  if (wakeHm) {
-    wakeHm.textContent = wakeFormatted.split(' ')[0];
-    const wakeAmpm = wakeHm.parentElement?.querySelector('span:last-child');
-    if (wakeAmpm && wakeAmpm !== wakeHm) wakeAmpm.textContent = wakeFormatted.split(' ')[1] || '';
-  }
-  if (sleepHm) {
-    sleepHm.textContent = sleepFormatted.split(' ')[0];
-    const sleepAmpm = sleepHm.parentElement?.querySelector('span:last-child');
-    if (sleepAmpm && sleepAmpm !== sleepHm) sleepAmpm.textContent = sleepFormatted.split(' ')[1] || '';
-  }
-
-  // Chips and cards
-  document.querySelectorAll('#schedChips .ob-chip').forEach(c => {
-    c.classList.toggle('selected', c.textContent.trim() === ob.sched);
-  });
-  document.querySelectorAll('#wdayChips .ob-chip').forEach(c => {
-    c.classList.toggle('selected', c.textContent.trim() === ob.wday);
-  });
-  document.querySelectorAll('#focusCards .ob-card').forEach(c => {
-    c.classList.toggle('selected', ob.focus.includes(c.dataset.val));
-  });
-  document.querySelectorAll('#failChips .ob-chip').forEach(c => {
-    c.classList.toggle('selected', ob.fail.includes(c.textContent.trim()));
-  });
-
-  // ── Pre-populate recurringRows from existing profile data ──
-  recurringRows = (ob.recurring || []).map((r, i) => ({
-    id: Date.now() + i,
-    title: r.title || '', icon: r.icon || '', start: r.start || '09:00', end: r.end || '',
-    cat: r.cat || 'work', days: r.days || [],
-    perday: !!r.dayTimes, dayTimes: r.dayTimes || null
-  }));
-  window._editRecurringData = null;
-
-  // Go to step 1
-  document.querySelectorAll('.onboard-page').forEach(pg => pg.classList.remove('active'));
-  document.getElementById('ob1').classList.add('active');
-  ob_screen.scrollTo(0, 0);
-}
 
 function resetProfile() {
   if (!confirm('Reset your profile and start over?')) return;
@@ -2875,10 +2510,8 @@ function removeRecurringRow(id) {
   });
 }
 
-// recurringContainerId lets the same recurring-activity editor render into
-// either the onboarding step or the Plan-screen manager sheet — the two
-// containers can't share an id (both exist in the DOM at once).
-let recurringContainerId = 'recurringList';
+// The recurring-activity editor renders into the Plan screen's manager sheet.
+let recurringContainerId = 'recurringListMgr';
 
 function renderRecurringRows() {
   const el = document.getElementById(recurringContainerId);
@@ -3034,15 +2667,7 @@ function collectRecurring() {
   }).filter(r => r.title && r.days.length > 0);
 }
 
-// Initialize recurring list display when ob6 becomes active
-function initRecurringStep() {
-  recurringContainerId = 'recurringList';
-  if (recurringRows.length) { renderRecurringRows(); return; }
-  const el = document.getElementById('recurringList');
-  if (el) el.innerHTML = '<div style="font-size:13px;color:var(--text3);text-align:center;padding:16px 0;">No recurring activities yet.<br>Tap + to add one.</div>';
-}
-
-// ── RECURRING ACTIVITIES: post-onboarding manager (Plan screen) ──
+// ── RECURRING ACTIVITIES: manager sheet (Plan screen) ──
 function openRecurringMgr() {
   recurringContainerId = 'recurringListMgr';
   // Stored recurring templates have no row id (they're plain saved data) —
@@ -3057,12 +2682,11 @@ function openRecurringMgr() {
 }
 function closeRecurringMgr() {
   document.getElementById('recurringMgrOverlay').classList.remove('open');
-  recurringContainerId = 'recurringList'; // restore onboarding's default target
 }
 function saveRecurringMgr() {
   profile.recurring = collectRecurring();
-  // Recurring appointments are derived data, same rule finishOnboard() follows:
-  // clear and let topUpRecurring() rebuild so per-day times stay honest.
+  // Recurring appointments are derived data: clear and let topUpRecurring()
+  // rebuild them so per-day times stay honest.
   appts = (appts || []).filter(a => a.note !== 'Recurring');
   saveAppts();
   topUpRecurring();
@@ -3083,21 +2707,6 @@ function renderRecurringSummary() {
 
 // ── TIME PICKER ──
 let tp = { hour: 7, min: 0, ampm: 'AM' };
-
-function openTimePicker(targetId) {
-  document.getElementById('timePickerTarget').value = targetId;
-  document.getElementById('timePickerTitle').textContent = targetId === 'ob-wake' ? 'Wake up time' : 'Sleep time';
-
-  // Parse current value
-  const current = document.getElementById(targetId).value || '07:00';
-  const [h, m] = current.split(':').map(Number);
-  tp.hour = h % 12 || 12;
-  tp.min = m;
-  tp.ampm = h >= 12 ? 'PM' : 'AM';
-
-  renderTimePicker();
-  document.getElementById('timePickerOverlay').classList.add('open');
-}
 
 function closeTimePicker() {
   document.getElementById('timePickerOverlay').classList.remove('open');
@@ -3162,7 +2771,6 @@ function openRecTimePicker(targetId, triggerEl) {
   recTpTarget = targetId;
   // Reuse the same picker sheet but with a generic title
   const titles = {
-    'ob-wake':'Wake up time','ob-sleep':'Sleep time',
     'appt-time':'Start time','appt-end':'End time',
     'edit-appt-time':'Start time','edit-appt-end':'End time',
     'tl-add-time':'Block time','tl-edit-time':'Block time',
@@ -3198,18 +2806,9 @@ function confirmTimePicker() {
   const hidden = document.getElementById(targetId);
   if (hidden) hidden.value = timeVal;
 
-  // ob-wake / ob-sleep use split spans — update those FIRST and never
-  // touch the parent's textContent, which would destroy the child spans.
-  const hmEl = document.getElementById(targetId + '-hm');
-  if (hmEl) {
-    hmEl.textContent = tp.hour + ':' + String(tp.min).padStart(2,'0');
-    const ampmSpan = hmEl.parentElement?.querySelector('span:last-child');
-    if (ampmSpan && ampmSpan !== hmEl) ampmSpan.textContent = tp.ampm;
-  } else {
-    // flat display span (rec-start-X-display, appt-time-display, per-day fields…)
-    const displaySpan = document.getElementById(targetId + '-display');
-    if (displaySpan) displaySpan.textContent = displayStr;
-  }
+  // display span (rec-start-X-display, appt-time-display, per-day fields…)
+  const displaySpan = document.getElementById(targetId + '-display');
+  if (displaySpan) displaySpan.textContent = displayStr;
 
   closeTimePicker();
 }
@@ -5137,6 +4736,7 @@ function hideAuthScreen() {
 function showAuthMode(mode) {
   authMode = mode;
   const err = document.getElementById('authError'); err.style.display = 'none';
+  const offBtn = document.getElementById('authOfflineBtn'); if (offBtn) offBtn.style.display = 'none';
   const notice = document.getElementById('authNotice'); notice.style.display = 'none';
   const confirmField = document.getElementById('authConfirmField');
   const pwField = document.getElementById('authPasswordField');
@@ -5222,7 +4822,7 @@ async function submitAuth() {
     const { error } = await client.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + window.location.pathname
     });
-    if (error) { authFail(error.message); return; }
+    if (error) { authFailMaybeOffline(error); return; }
     authNotify('Check your email for a reset link.');
     return;
   }
@@ -5246,7 +4846,7 @@ async function submitAuth() {
     const confirm = document.getElementById('auth-confirm').value;
     if (password !== confirm) { authFail('Passwords don\'t match.'); return; }
     const { data, error } = await client.auth.signUp({ email, password });
-    if (error) { authFail(error.message); return; }
+    if (error) { authFailMaybeOffline(error); return; }
     if (data && data.user && !data.session) {
       authNotify('Check your email to confirm your account, then log in.');
       showAuthMode('login');
@@ -5258,8 +4858,42 @@ async function submitAuth() {
 
   // login
   const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error) { authFail(error.message); return; }
+  if (error) { authFailMaybeOffline(error); return; }
   await onAuthSuccess(data.session);
+}
+
+// Is Supabase answering at all? Only used to decide whether a logged-out
+// user with data on this device gets let in offline.
+async function isCloudReachable() {
+  if (typeof BIOS_SUPABASE_URL === 'undefined') return false;
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), 6000) : null;
+  try {
+    const r = await fetch(BIOS_SUPABASE_URL + '/auth/v1/health', {
+      headers: { apikey: BIOS_SUPABASE_ANON_KEY }, signal: ctl ? ctl.signal : undefined
+    });
+    return r.status < 500;
+  } catch (e) {
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+// Offline entry: no session, so nothing auto-syncs. Logging in later goes
+// through the normal sync check, which asks before overwriting anything.
+function enterOffline() {
+  hideAuthScreen();
+  loadExisting();
+  toast("Offline — can't reach your account. Using this device's data.");
+}
+function isNetworkError(err) {
+  return !!err && (err.name === 'AuthRetryableFetchError' || /load failed|failed to fetch|network/i.test(err.message || ''));
+}
+function authFailMaybeOffline(err) {
+  if (!isNetworkError(err)) { authFail(err.message); return; }
+  authFail("Can't reach the server right now. Check your connection, or try again in a few minutes.");
+  const btn = document.getElementById('authOfflineBtn');
+  if (btn && profile && habits) btn.style.display = 'block';
 }
 
 async function logOut() {
